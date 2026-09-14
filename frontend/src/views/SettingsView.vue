@@ -12,8 +12,6 @@ const store = useSettingsStore()
 const update = useUpdateStore()
 const toast = useToast()
 const form = reactive<Settings>({
-  checkinHour: 9,
-  checkinMinute: 30,
   autoStart: false,
   updateProxy: '',
 })
@@ -81,12 +79,6 @@ async function openDataDir() {
     <p class="text-xs text-slate-500 mb-4 ml-9">所有数据仅保存在本机</p>
 
     <div class="bg-white dark:bg-slate-900 rounded-xl ring-1 ring-slate-200 dark:ring-slate-800 p-0 divide-y divide-slate-100 dark:divide-slate-800">
-      <div class="flex items-center justify-between gap-4 px-4 py-3">
-        <div><div class="text-sm font-medium">每日签到时间</div><div class="text-xs text-slate-500 mt-0.5">本地时区，到点自动签到</div></div>
-        <input v-model.number="form.checkinHour" type="number" min="0" max="23" class="w-14 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-sm" />
-        <span class="text-slate-400">:</span>
-        <input v-model.number="form.checkinMinute" type="number" min="0" max="59" class="w-14 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-sm" />
-      </div>
       <label class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer">
         <div><div class="text-sm font-medium">开机自启</div><div class="text-xs text-slate-500 mt-0.5">写入 HKCU，无需管理员权限</div></div>
         <input v-model="form.autoStart" type="checkbox" class="w-9 h-5 accent-indigo-600" />

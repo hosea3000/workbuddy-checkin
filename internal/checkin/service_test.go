@@ -108,6 +108,36 @@ func TestPerformCheckinFailureNotifies(t *testing.T) {
 	}
 }
 
+func TestTodayAttemptsResetOnNewDay(t *testing.T) {
+	fc := &fakeClient{checkinFn: func(_ context.Context, _ codebuddy.CredentialSnapshot) (bool, *int, string, *float64, error) {
+		return true, nil, "ok", nil, nil
+	}}
+	yesterday := model.Today(time.Now().AddDate(0, 0, -1))
+	svc, _, st := newFixture(t, model.Credential{ID: "1", UserID: "uid_a", Status: model.StatusActive, TodayDate: yesterday, TodayAttempts: 3}, fc)
+
+	_, _ = svc.PerformCheckin(context.Background(), "1")
+	got, _ := st.GetCredential("1")
+	if got.TodayAttempts != 1 {
+		t.Errorf("TodayAttempts should reset on a new day, got %d", got.TodayAttempts)
+	}
+}
+
+func TestFailureNotifiesOnlyFirstTimePerDay(t *testing.T) {
+	fc := &fakeClient{checkinFn: func(_ context.Context, _ codebuddy.CredentialSnapshot) (bool, *int, string, *float64, error) {
+		return false, nil, "", nil, &codebuddy.UpstreamError{ErrType: codebuddy.ErrCategoryUpstream5xx, Message: "boom"}
+	}}
+	svc, n, st := newFixture(t, model.Credential{ID: "1", UserID: "uid_a", Status: model.StatusActive, TodayDate: model.Today(time.Now()), TodayAttempts: 1}, fc)
+
+	_, _ = svc.PerformCheckin(context.Background(), "1")
+	if len(n.titles) != 0 {
+		t.Errorf("subsequent failure of the day must not notify, got %v", n.titles)
+	}
+	got, _ := st.GetCredential("1")
+	if got.TodayAttempts != 2 {
+		t.Errorf("attempt should still increment, got %d", got.TodayAttempts)
+	}
+}
+
 func TestSnapshotMapping(t *testing.T) {
 	fc := &fakeClient{checkinFn: func(_ context.Context, _ codebuddy.CredentialSnapshot) (bool, *int, string, *float64, error) {
 		return true, nil, "ok", nil, nil

@@ -183,8 +183,6 @@ export namespace model {
 	    }
 	}
 	export class Settings {
-	    checkinHour: number;
-	    checkinMinute: number;
 	    autoStart: boolean;
 	    updateProxy: string;
 	
@@ -194,8 +192,6 @@ export namespace model {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.checkinHour = source["checkinHour"];
-	        this.checkinMinute = source["checkinMinute"];
 	        this.autoStart = source["autoStart"];
 	        this.updateProxy = source["updateProxy"];
 	    }

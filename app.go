@@ -81,10 +81,10 @@ func (a *App) startup(ctx context.Context) {
 	// 窗口可见性由 main.go 的 StartHidden（--hidden 标记）决定，此处不再补 show。
 	a.tray.Start(a.trayTip())
 	a.tray.SetTip(a.trayTip())
-	// 启动补签（托盘就绪后）
+	// 启动即巡检（托盘就绪后）：当天未签到的账号立即补签
 	go func() {
 		time.Sleep(2 * time.Second)
-		a.scheduler.CatchUp(a.ctx)
+		a.scheduler.RunAll(a.ctx)
 		a.refreshTrayTip()
 	}()
 	log.Printf("workbuddy-checkin started, data dir: %s", a.store.Dir())
@@ -116,7 +116,7 @@ func (a *App) quit() {
 
 func (a *App) wake() {
 	go func() {
-		a.scheduler.Wake(a.ctx)
+		a.scheduler.RunAll(a.ctx)
 		a.refreshTrayTip()
 	}()
 }

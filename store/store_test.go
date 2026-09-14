@@ -84,7 +84,7 @@ func TestSettingsDefaultsWhenMissing(t *testing.T) {
 
 func TestSettingsPartialFileFillsDefaults(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, settingsFile), []byte(`{"checkinHour":7,"checkinMinute":5}`), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, settingsFile), []byte(`{"updateProxy":"https://gh-proxy.com"}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	s, err := New(dir)
@@ -92,7 +92,7 @@ func TestSettingsPartialFileFillsDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := s.GetSettings()
-	if got.CheckinHour != 7 || got.CheckinMinute != 5 {
+	if got.UpdateProxy != "https://gh-proxy.com" {
 		t.Errorf("explicit fields lost: %+v", got)
 	}
 	if got.AutoStart {
@@ -104,12 +104,12 @@ func TestSettingsPersist(t *testing.T) {
 	dir := t.TempDir()
 	s, _ := New(dir)
 	custom := model.DefaultSettings()
-	custom.CheckinHour = 21
+	custom.UpdateProxy = "https://ghfast.top"
 	if err := s.SaveSettings(custom); err != nil {
 		t.Fatal(err)
 	}
 	s2, _ := New(dir)
-	if got := s2.GetSettings(); got.CheckinHour != 21 {
+	if got := s2.GetSettings(); got.UpdateProxy != "https://ghfast.top" {
 		t.Errorf("settings not persisted: %+v", got)
 	}
 }

@@ -113,6 +113,9 @@ func (s *Service) PerformCheckin(ctx context.Context, id string) (model.CheckinR
 	}
 
 	now := s.now()
+	// 当日首次尝试（用于失败通知节流）：跨天或今日尚未尝试过。
+	firstToday := c.TodayDate != model.Today(now) || c.TodayAttempts == 0
+
 	success, _, msg, credit, err := s.client.Checkin(ctx, snapshot(c))
 	if err != nil {
 		msg = humanizeCheckinError(err)
@@ -122,6 +125,9 @@ func (s *Service) PerformCheckin(ctx context.Context, id string) (model.CheckinR
 		success = true
 	}
 
+	if c.TodayDate != model.Today(now) {
+		c.TodayAttempts = 0
+	}
 	c.TodayDate = model.Today(now)
 	c.TodaySuccess = success
 	c.TodayMessage = msg
@@ -145,7 +151,7 @@ func (s *Service) PerformCheckin(ctx context.Context, id string) (model.CheckinR
 		Credit:      c.TodayCredit,
 		CheckedInAt: c.TodayAttemptedAt,
 	}
-	s.notifyResult(c, res)
+	s.notifyResult(c, res, firstToday)
 	return res, nil
 }
 
@@ -177,13 +183,14 @@ func (s *Service) RefreshQuota(ctx context.Context, id string) (model.QuotaView,
 	return model.QuotaView{Balance: updated.CreditBalance, Total: updated.CreditBalanceTotal, At: updated.CreditBalanceAt}, nil
 }
 
-func (s *Service) notifyResult(c model.Credential, res model.CheckinResult) {
+// notifyResult 发送签到结果通知。失败仅在当日首次失败时通知，避免每小时巡检重复弹窗。
+func (s *Service) notifyResult(c model.Credential, res model.CheckinResult, firstToday bool) {
 	if s.notify == nil {
 		return
 	}
 	if res.Success {
 		s.notify.Notify("签到成功", displayName(c)+" "+res.Message)
-	} else {
+	} else if firstToday {
 		s.notify.Notify("签到失败", displayName(c)+"："+res.Message)
 	}
 }

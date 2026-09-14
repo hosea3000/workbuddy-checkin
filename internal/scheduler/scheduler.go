@@ -75,49 +75,21 @@ func (s *Scheduler) Stop() {
 	}
 }
 
+// loop 每小时执行一次签到巡检与余额刷新；启动与唤醒时的即时巡检由调用方直接 RunAll。
 func (s *Scheduler) loop(ctx context.Context) {
 	defer close(s.done)
-	settings := s.store.GetSettings()
-	next := NextTrigger(s.now(), settings.CheckinHour, settings.CheckinMinute)
-	quotaTick := time.NewTicker(time.Hour)
-	defer quotaTick.Stop()
+	tick := time.NewTicker(time.Hour)
+	defer tick.Stop()
 
 	for {
-		wait := time.Until(next)
-		if wait < 0 {
-			wait = 0
-		}
-		timer := time.NewTimer(wait)
 		select {
 		case <-ctx.Done():
-			timer.Stop()
 			return
-		case <-timer.C:
-			settings = s.store.GetSettings()
+		case <-tick.C:
 			s.RunAll(ctx)
-			next = NextTrigger(s.now(), settings.CheckinHour, settings.CheckinMinute)
-		case <-quotaTick.C:
 			s.RefreshAllQuotas(ctx)
 		}
 	}
-}
-
-// Wake 处理休眠唤醒 / 跨天：满足条件则补签。
-func (s *Scheduler) Wake(ctx context.Context) {
-	settings := s.store.GetSettings()
-	creds := s.store.ListCredentials()
-	now := s.now()
-	for _, c := range creds {
-		if ShouldCatchUp(c, now, settings) {
-			s.RunAll(ctx)
-			return
-		}
-	}
-}
-
-// CatchUp 启动时按补签条件执行一次。
-func (s *Scheduler) CatchUp(ctx context.Context) {
-	s.Wake(ctx)
 }
 
 // RunAll 串行对全部账号执行签到（逐个、抖动、跳过已成功与待重登）。
@@ -149,32 +121,8 @@ func (s *Scheduler) RunAll(ctx context.Context) []model.CheckinResult {
 			continue
 		}
 		results = append(results, res)
-		if !res.Success && ShouldRetry(mustGet(s.store, c.ID), s.now()) {
-			s.scheduleRetry(ctx, c.ID)
-		}
 	}
 	return results
-}
-
-func (s *Scheduler) scheduleRetry(ctx context.Context, id string) {
-	go func() {
-		timer := time.NewTimer(RetryDelay)
-		defer timer.Stop()
-		select {
-		case <-ctx.Done():
-			return
-		case <-timer.C:
-		}
-		s.runMu.Lock()
-		defer s.runMu.Unlock()
-		c, ok := s.store.GetCredential(id)
-		if !ok || !ShouldRetry(c, s.now()) {
-			return
-		}
-		if _, err := s.svc.PerformCheckin(ctx, id); err != nil {
-			log.Printf("[scheduler] retry account=%s failed: %v", shortID(c), err)
-		}
-	}()
 }
 
 // RefreshAllQuotas 刷新全部账号余额（跳过待重登与已成功的余额空值）。
@@ -190,11 +138,6 @@ func (s *Scheduler) RefreshAllQuotas(ctx context.Context) {
 			log.Printf("[scheduler] quota account=%s failed: %v", shortID(c), err)
 		}
 	}
-}
-
-func mustGet(st *store.Store, id string) model.Credential {
-	c, _ := st.GetCredential(id)
-	return c
 }
 
 func shortID(c model.Credential) string {

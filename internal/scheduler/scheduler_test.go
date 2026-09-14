@@ -11,12 +11,16 @@ import (
 )
 
 type fakeSvc struct {
-	calls  int32
-	jitter time.Duration
+	calls     int32
+	jitter    time.Duration
+	failFirst int32
 }
 
 func (f *fakeSvc) PerformCheckin(_ context.Context, id string) (model.CheckinResult, error) {
-	atomic.AddInt32(&f.calls, 1)
+	n := atomic.AddInt32(&f.calls, 1)
+	if f.failFirst > 0 && n <= f.failFirst {
+		return model.CheckinResult{ID: id, Success: false, Message: "签到失败"}, nil
+	}
 	return model.CheckinResult{ID: id, Success: true, Message: "已签到 09:30"}, nil
 }
 func (f *fakeSvc) RefreshQuota(_ context.Context, _ string) (model.QuotaView, error) {
@@ -67,25 +71,32 @@ func TestRunAllSerialOrderJitter(t *testing.T) {
 	}
 }
 
-func TestWakeCatchUp(t *testing.T) {
+func TestRunAllSignsUnsignedImmediately(t *testing.T) {
 	s, st, svc := newScheduler(t)
-	// 已过签到时间（默认 09:30），未签到 → 应补签
-	s.SetNow(func() time.Time { return time.Date(2026, 9, 14, 12, 0, 0, 0, time.Local) })
 	_ = st.SaveCredential(model.Credential{ID: "1", UserID: "uid_1", Status: model.StatusActive})
 
-	s.Wake(context.Background())
+	// 无签到时间条件：启动/唤醒直接巡检即签。
+	s.RunAll(context.Background())
 	if svc.calls != 1 {
-		t.Errorf("expected catch-up call, got %d", svc.calls)
+		t.Errorf("expected immediate sweep call, got %d", svc.calls)
 	}
 }
 
-func TestWakeNoCatchUpBeforeTrigger(t *testing.T) {
+func TestRunAllRetriesUnsignedNextSweep(t *testing.T) {
 	s, st, svc := newScheduler(t)
-	s.SetNow(func() time.Time { return time.Date(2026, 9, 14, 8, 0, 0, 0, time.Local) })
+	svc.failFirst = 1
 	_ = st.SaveCredential(model.Credential{ID: "1", UserID: "uid_1", Status: model.StatusActive})
 
-	s.Wake(context.Background())
-	if svc.calls != 0 {
-		t.Errorf("should not catch up before trigger, got %d calls", svc.calls)
+	first := s.RunAll(context.Background())
+	if len(first) != 1 || first[0].Success {
+		t.Fatalf("first sweep should fail, got %+v", first)
+	}
+	// 下一次巡检（每小时）再次尝试，无当日次数上限。
+	second := s.RunAll(context.Background())
+	if len(second) != 1 || !second[0].Success {
+		t.Fatalf("second sweep should retry and succeed, got %+v", second)
+	}
+	if svc.calls != 2 {
+		t.Errorf("expected 2 upstream calls, got %d", svc.calls)
 	}
 }
