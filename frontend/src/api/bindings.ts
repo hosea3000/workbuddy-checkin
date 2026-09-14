@@ -10,6 +10,9 @@ export type Settings = model.Settings
 export type LoginStart = model.LoginStart
 export type LoginStatus = model.LoginStatus
 export type QuotaView = model.QuotaView
+export type UpdateCheckResult = model.UpdateCheckResult
+export type UpdateDownloadEvent = model.UpdateDownloadEvent
+export type PendingUpdateInfo = model.PendingUpdateInfo
 
 export const api = {
   listAccounts: () => App.ListAccounts(),
@@ -26,4 +29,10 @@ export const api = {
   saveSettings: (s: Settings) => App.SaveSettings(s),
   openDataDir: () => App.OpenDataDir(),
   hasAccounts: () => App.HasAccounts(),
+  getVersion: () => App.GetVersion(),
+  checkUpdate: () => App.CheckUpdate(),
+  downloadAndApplyUpdate: () => App.DownloadAndApplyUpdate(),
+  applyUpdateAndRestart: () => App.ApplyUpdateAndRestart(),
+  updateProgress: () => App.UpdateProgress(),
+  pendingUpdateInfo: () => App.PendingUpdateInfo(),
 }

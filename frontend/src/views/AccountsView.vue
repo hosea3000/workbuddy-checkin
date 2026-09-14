@@ -1,27 +1,19 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { Plus } from '@lucide/vue'
 import AccountCard from '../components/AccountCard.vue'
 import LoginDialog from '../components/LoginDialog.vue'
 import { useAccountsStore } from '../stores/accounts'
-import { useSettingsStore } from '../stores/settings'
 import { useToast } from '../composables/toast'
 import { api } from '../api/bindings'
 
 const accounts = useAccountsStore()
-const settings = useSettingsStore()
 const toast = useToast()
 const dialogOpen = ref(false)
 const authUrl = ref('')
 
-const checkinTime = computed(() => {
-  const s = settings.settings
-  if (!s) return '09:30'
-  return `${String(s.checkinHour).padStart(2, '0')}:${String(s.checkinMinute).padStart(2, '0')}`
-})
-
 onMounted(async () => {
-  await Promise.all([accounts.refresh(), settings.load()])
+  await accounts.refresh()
 })
 
 async function openLogin() {
@@ -46,7 +38,7 @@ async function onSuccess() {
       <div>
         <h1 class="font-semibold">账号</h1>
         <p class="text-xs text-slate-500 mt-0.5">
-          每天 {{ checkinTime }} 自动签到，电脑开机后自动补签
+          自动签到，电脑开机后自动补签
         </p>
       </div>
       <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium cursor-pointer" @click="openLogin">

@@ -6,18 +6,17 @@ import (
 	"github.com/hosea3000/workbuddy-checkin/model"
 )
 
-// GetSettings 返回当前设置。
+// GetSettings 返回当前设置；AutoStart 以 HKCU Run 的真实状态为准（不信任持久化值）。
 func (a *App) GetSettings() model.Settings {
-	return a.store.GetSettings()
+	s := a.store.GetSettings()
+	s.AutoStart = autoStartEnabled()
+	return s
 }
 
-// SaveSettings 持久化设置；AutoStart 变化时同步 HKCU Run。
+// SaveSettings 持久化设置，并每次同步 HKCU Run（幂等，可修复外部改动导致的不一致）。
 func (a *App) SaveSettings(s model.Settings) error {
-	prev := a.store.GetSettings()
-	if s.AutoStart != prev.AutoStart {
-		if err := setAutoStart(s.AutoStart); err != nil {
-			return err
-		}
+	if err := setAutoStart(s.AutoStart); err != nil {
+		return err
 	}
 	return a.store.SaveSettings(s)
 }

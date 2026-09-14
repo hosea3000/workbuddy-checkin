@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/hosea3000/workbuddy-checkin/internal/account"
 	"github.com/hosea3000/workbuddy-checkin/internal/checkin"
 	"github.com/hosea3000/workbuddy-checkin/internal/scheduler"
+	"github.com/hosea3000/workbuddy-checkin/model"
 	"github.com/hosea3000/workbuddy-checkin/store"
 	"github.com/hosea3000/workbuddy-checkin/upstream/codebuddy"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -36,6 +38,10 @@ type App struct {
 	mu            sync.Mutex
 	closeTipShown bool
 	quitting      atomic.Bool
+
+	updateDownloadURL   string
+	updateLatestVersion string
+	updateProgress      model.UpdateDownloadEvent
 }
 
 // NewApp 构造应用并初始化存储与各服务。
@@ -67,14 +73,18 @@ func NewApp() *App {
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	// 清理上次更新遗留的 .part 残渣与孤儿版本标记（保留待应用的 .new）。
+	if exePath, err := os.Executable(); err == nil {
+		cleanupUpdateArtifacts(exePath)
+	}
 	a.scheduler.Start(ctx)
 	// 窗口可见性由 main.go 的 StartHidden（--hidden 标记）决定，此处不再补 show。
 	a.tray.Start(a.trayTip())
 	a.tray.SetTip(a.trayTip())
-	// 启动补签（托盘就绪后）
+	// 启动即巡检（托盘就绪后）：当天未签到的账号立即补签
 	go func() {
 		time.Sleep(2 * time.Second)
-		a.scheduler.CatchUp(a.ctx)
+		a.scheduler.RunAll(a.ctx)
 		a.refreshTrayTip()
 	}()
 	log.Printf("workbuddy-checkin started, data dir: %s", a.store.Dir())
@@ -86,13 +96,10 @@ func (a *App) shutdown(ctx context.Context) {
 	}
 }
 
-// beforeClose 返回 true 阻止窗口关闭（即隐藏到托盘）。
+// beforeClose 返回 true 阻止窗口关闭（即隐藏到托盘）。关闭窗口一律最小化到托盘。
 // 主动退出时 quitting 已置位，须放行，否则最小化到托盘会吞掉退出。
 func (a *App) beforeClose(ctx context.Context) bool {
 	if a.quitting.Load() {
-		return false
-	}
-	if !a.store.GetSettings().MinimizeToTray {
 		return false
 	}
 	a.notifyCloseTipOnce()
@@ -109,7 +116,7 @@ func (a *App) quit() {
 
 func (a *App) wake() {
 	go func() {
-		a.scheduler.Wake(a.ctx)
+		a.scheduler.RunAll(a.ctx)
 		a.refreshTrayTip()
 	}()
 }

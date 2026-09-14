@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Settings as SettingsIcon, CalendarCheck } from '@lucide/vue'
+import { Settings as SettingsIcon, CalendarCheck, Download } from '@lucide/vue'
 import ToastHost from './components/ui/ToastHost.vue'
 import { useAccountsStore } from './stores/accounts'
+import { useUpdateStore } from './stores/update'
 import { api } from './api/bindings'
 
 const route = useRoute()
 const router = useRouter()
 const accounts = useAccountsStore()
+const update = useUpdateStore()
 
 const summaryText = computed(() => {
   if (accounts.summary.reloginRequired > 0) return '有账号需重新登录'
@@ -16,6 +18,9 @@ const summaryText = computed(() => {
 })
 
 onMounted(async () => {
+  update.loadVersion()
+  update.loadPending()
+  update.check()
   if (route.name === 'welcome') return
   const has = await api.hasAccounts()
   if (!has) {
@@ -32,6 +37,15 @@ onMounted(async () => {
       <img src="/icon.png" alt="workbuddy-checkin" class="w-7 h-7 rounded-lg object-cover" />
       <div class="font-semibold text-sm">workbuddy-checkin</div>
       <div class="ml-auto flex items-center gap-3">
+        <button
+          v-if="update.hasUpdate || update.pendingVersion"
+          class="text-xs flex items-center gap-1 text-indigo-600 dark:text-indigo-400 cursor-pointer"
+          title="查看更新"
+          @click="router.push({ name: 'settings' })"
+        >
+          <Download class="w-3.5 h-3.5" />
+          {{ update.pendingVersion ? `新版本 v${update.pendingVersion} 待重启` : `发现新版本 v${update.latestVersion}` }}
+        </button>
         <span
           v-if="route.name === 'accounts' && accounts.summary.total"
           class="text-xs flex items-center gap-1"

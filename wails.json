@@ -8,5 +8,11 @@
   "frontend:dev:serverUrl": "auto",
   "author": {
     "name": "hosea3000"
+  },
+  "info": {
+    "companyName": "hosea3000",
+    "productName": "workbuddy-checkin",
+    "productVersion": "0.1.0",
+    "copyright": "Copyright (c) hosea3000"
   }
 }

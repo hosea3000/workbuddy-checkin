@@ -31,3 +31,14 @@ func setAutoStart(enable bool) error {
 	}
 	return key.SetStringValue(appRunName, buildAutoStartCommand(exe))
 }
+
+// autoStartEnabled 读取 HKCU Run 项是否存在，反映真实的开机自启状态。
+func autoStartEnabled() bool {
+	key, err := registry.OpenKey(registry.CURRENT_USER, runKeyPath, registry.QUERY_VALUE)
+	if err != nil {
+		return false
+	}
+	defer key.Close()
+	_, _, err = key.GetStringValue(appRunName)
+	return err == nil
+}

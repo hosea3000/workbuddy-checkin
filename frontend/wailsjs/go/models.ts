@@ -152,6 +152,20 @@ export namespace model {
 		    return a;
 		}
 	}
+	export class PendingUpdateInfo {
+	    exists: boolean;
+	    version: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PendingUpdateInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.exists = source["exists"];
+	        this.version = source["version"];
+	    }
+	}
 	export class QuotaView {
 	    balance?: number;
 	    total?: number;
@@ -169,15 +183,8 @@ export namespace model {
 	    }
 	}
 	export class Settings {
-	    checkinHour: number;
-	    checkinMinute: number;
-	    catchUpOnStart: boolean;
-	    retryOnFailure: boolean;
-	    notifySuccess: boolean;
-	    notifyFailure: boolean;
 	    autoStart: boolean;
-	    minimizeToTrayOnClose: boolean;
-	    checkUpdateOnStart: boolean;
+	    updateProxy: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -185,15 +192,51 @@ export namespace model {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.checkinHour = source["checkinHour"];
-	        this.checkinMinute = source["checkinMinute"];
-	        this.catchUpOnStart = source["catchUpOnStart"];
-	        this.retryOnFailure = source["retryOnFailure"];
-	        this.notifySuccess = source["notifySuccess"];
-	        this.notifyFailure = source["notifyFailure"];
 	        this.autoStart = source["autoStart"];
-	        this.minimizeToTrayOnClose = source["minimizeToTrayOnClose"];
-	        this.checkUpdateOnStart = source["checkUpdateOnStart"];
+	        this.updateProxy = source["updateProxy"];
+	    }
+	}
+	
+	export class UpdateCheckResult {
+	    status: string;
+	    currentVersion: string;
+	    latestVersion: string;
+	    releaseUrl: string;
+	    downloadUrl: string;
+	    message: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateCheckResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.currentVersion = source["currentVersion"];
+	        this.latestVersion = source["latestVersion"];
+	        this.releaseUrl = source["releaseUrl"];
+	        this.downloadUrl = source["downloadUrl"];
+	        this.message = source["message"];
+	    }
+	}
+	export class UpdateDownloadEvent {
+	    phase: string;
+	    downloaded: number;
+	    total: number;
+	    percent: number;
+	    message: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateDownloadEvent(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.phase = source["phase"];
+	        this.downloaded = source["downloaded"];
+	        this.total = source["total"];
+	        this.percent = source["percent"];
+	        this.message = source["message"];
 	    }
 	}
 

@@ -82,7 +82,7 @@ type Credential struct {
     TodayMessage     string   `json:"today_message"`     // "已签到" / 失败原因
     TodayCredit      *float64 `json:"today_credit"`      // 本次获得积分，可能没有
     TodayAttemptedAt int64    `json:"today_attempted_at"`
-    TodayAttempts    int      `json:"today_attempts"`    // 当日尝试次数（F4 重试上限 3 次；跨天清零）
+    TodayAttempts    int      `json:"today_attempts"`    // 当日尝试次数（跨天清零；用于失败通知节流）
     CreditBalance    *float64 `json:"credit_balance"`    // 积分余额 = FetchQuotaPersonal 的 remaining
     CreditBalanceTotal *float64 `json:"credit_balance_total"` // 周期总额度（UI 可展示 "640 / 1000"）
     CreditBalanceAt  int64    `json:"credit_balance_at"` // 上次成功查询余额的时间，UI 据此显示「—」或旧值
@@ -92,13 +92,8 @@ type Credential struct {
 
 // model/settings.go
 type Settings struct {
-    CheckinHour, CheckinMinute int
-    CatchUpOnStart             bool
-    RetryOnFailure             bool
-    NotifySuccess, NotifyFailure bool
-    AutoStart                  bool
-    MinimizeToTrayOnClose      bool
-    CheckUpdateOnStart         bool
+    AutoStart   bool
+    UpdateProxy string // 更新检查与下载的加速代理前缀，空为直连
 }
 ```
 
@@ -206,37 +201,37 @@ performCheckin(cred):
 
 触发点：① 应用启动时 ② 每次签到成功后 ③ 定时每 1 小时 ④ 手动 `RefreshQuota(id)`（卡片上的刷新按钮）。
 
-- 定时器复用 `scheduler`（与签到 timer 独立），单账号串行、账号间沿用 5~20s 抖动
+- 与签到共用同一个每小时 tick（先巡检签到，再刷余额），单账号串行、账号间沿用 5~20s 抖动
 - `relogin_required` 账号跳过，不空打上游
 - 上游风控约束（PRD §7）：余额查询是唯一的额外轮询接口，不因它增加请求频率；间隔常量集中一处便于调整
 
 ### 7.2 调度器
 
 ```
-        ┌────────────────────────────────────────────────┐
-        │ scheduler.Run(ctx)                             │
-        │                                                │
-  ┌─────▼─────┐   timer 到点   ┌──────────────┐          │
-  │ idle      │───────────────▶│ runAll()     │          │
-  └───────────┘                │  for cred:   │          │
-        ▲                      │   jitter 5~20s          │
-        │                      │   performCheckin()      │
-        │  重算下次触发点        │  失败且开关开 → 排重试  │
-        └──────────────────────└──────────────┘          │
-                                                       │
-  触发源：① 定时器（下次签到点） ② 启动补签 ③ 休眠唤醒 ④ 跨天
+        ┌──────────────────────────────────────────────────────┐
+        │ scheduler.loop(ctx)                                  │
+        │                                                      │
+        │   time.NewTicker(time.Hour)                          │
+        │        │                                             │
+        │        ▼                                             │
+        │   RunAll()            ← 签到巡检（跳过已签/待重登）   │
+        │   RefreshAllQuotas()  ← 余额刷新                      │
+        └──────────────────────────────────────────────────────┘
+
+  触发源：① 每小时 tick  ② 启动（托盘就绪后）立即 RunAll
+          ③ 休眠唤醒 / 会话解锁 立即 RunAll
 ```
 
-- 下次触发点 = 今天 `HH:MM`，已过则明天 `HH:MM`（`time.Now()` 本地时区，无 DST 的 CN 时区无歧义）
-- 系统时间被手动修改 / 时区变更：每次 timer 触发后重新计算（不做 NTP 校验）
-- 重试：失败后 `time.After(30min)` 排一次，当日每账号最多 3 次（计数读 `Credential.TodayAttempts`，跨天归零，**重启后仍有效**）；`relogin_required` 跳过
-- 唤醒事件：托盘消息循环已有 `WM_POWERBROADCAST` / `WM_WTSSESSION_CHANGE` 钩子（照抄 health-tool `tray_windows.go`），转发到 `scheduler.Wake()`
-- 并发保护：`runAll` 全程持 `sync.Mutex`，手动签到排队等待（不并发打上游）
+- 无固定签到时间：去掉 `NextTrigger` 与长 timer，改为单个每小时 ticker（`time.NewTicker(time.Hour)`）
+- 巡检即幂等：`RunAll` 跳过 `TodaySuccess && TodayDate == 今天` 与 `relogin_required` 的账号
+- 重试：不设固定 30 分钟间隔与每日次数上限；失败账号在下一次每小时巡检自动重试（1h 间隔 + 账号间 5~20s 抖动节流）
+- 唤醒事件：托盘消息循环的 `WM_POWERBROADCAST` / `WM_WTSSESSION_CHANGE` 钩子直接调用 `scheduler.RunAll()`
+- 并发保护：`RunAll` 全程持 `runMu`，手动签到排队等待（不并发打上游）
 
 ### 7.3 补签（F5）
 
-`CatchUp()` 的判定：`settings.CatchUpOnStart && now >= 今日签到点 && 凭证的 TodaySuccess 不为真（或 TodayDate 不是今天）` → 立即 `runAll()`（跳过已成功账号）。
-调用点：应用启动（托盘就绪后）、休眠唤醒、跨天（timer 触发时若发现日期变更）。
+补签与每小时巡检是同一段逻辑：`RunAll()` 对「今天未成功签到」且非 `relogin_required` 的账号执行签到，已成功账号跳过。
+调用点：应用启动（托盘就绪后）、休眠唤醒、会话解锁、每小时 tick。补签、成功/失败通知均为默认行为，不提供开关。
 
 ## 8. 安全与隐私
 
@@ -306,7 +301,8 @@ openspec/specs/
 ├── settings/              # F7
 ├── tray-integration/      # F8 托盘/自启/单实例/静默启动
 ├── first-run/             # F10
-└── ci-autorelease/        # tag → Release exe（照抄 health-tool）
+├── app-update/            # F9 检查更新 + 下载 + 自替换升级
+└── ci-autorelease/        # tag → Release exe + per-user 中文 NSIS 安装器（照抄 health-tool）
 ```
 
 ## 12. 开放问题
@@ -315,9 +311,9 @@ openspec/specs/
 |---|---|---|
 | 1 | 令牌是否用 DPAPI 加密 | 一期明文 + 0600，接口留在 store 层；二期再评估 |
 | 2 | ~~是否展示剩余额度（`FetchQuotaPersonal`）~~ | 已定：卡片显示积分余额（= remaining），启动/签到后/每 1h/手动刷新（见 §7.1.1） |
-| 3 | 签到点是否支持多个（如 09:30 + 21:30） | 上游幂等，多触发点能提高「关机漏签」容错；倾向 v1.1 加 |
+| 3 | ~~签到点是否支持多个（如 09:30 + 21:30）~~ | 已定：改为每小时巡检，无固定签到点，天然容错 |
 | 4 | 是否需要「便携模式」（数据放 exe 同目录） | 需要用户级自启路径配合，成本不高；倾向 v1.1 |
-| 5 | 更新器是否一期就做 | health-tool 已有完整实现，移植约半天；可放 M5 |
+| 5 | ~~更新器是否一期就做~~ | 已定：随安装器一起落地（移植 health-tool updater，见 `app-update`） |
 | 6 | 前端是否复用 work2api 的 UI 组件库 | 两端无共享 module，倾向各自维护但抄样式与交互 |
 | 7 | 是否需要「导出诊断包」 | 用户反馈问题时很有用（脱敏日志）；倾向 P2 |
 
@@ -331,4 +327,4 @@ openspec/specs/
 | 账号服务 | `internal/account/*_test.go`：登录状态机（假 client）、去重、续期失败置位 |
 | 余额刷新 | `internal/checkin/*_test.go`：假 client 验证刷新触发点、失败不改状态、`relogin_required` 跳过 |
 | 端到端（Windows） | PRD §8 验收清单人工执行；`wails dev` 下浏览器调 UI |
-| CI | `go vet ./... && go test ./...`（Linux 跑 stub 分支）+ `wails build -platform windows/amd64` |
+| CI | `go vet ./... && go test ./...`（Linux 跑 stub 分支）+ `wails build -nsis -installscope user -platform windows/amd64`，发布 exe 与安装器双资产 |
