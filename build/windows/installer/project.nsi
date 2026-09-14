@@ -33,6 +33,7 @@ Unicode true
 ## Include the wails tools
 ####
 !include "wails_tools.nsh"
+!include "LogicLib.nsh"
 
 # The version information for this two must consist of 4 parts
 VIProductVersion "${INFO_PRODUCTVERSION}.0"
@@ -106,6 +107,13 @@ Section
 SectionEnd
 
 Section "uninstall"
+    # 应用正在运行时拒绝卸载：托盘消息窗口类名固定为 WorkbuddyCheckinTray。
+    FindWindow $0 "WorkbuddyCheckinTray" ""
+    ${If} $0 != 0
+        MessageBox MB_OK|MB_ICONEXCLAMATION|MB_DEFBUTTON1 "workbuddy-checkin 正在运行，无法卸载。$\r$\n$\r$\n请先退出应用（右键托盘图标 → 退出），然后重新卸载。" /SD IDOK
+        Quit
+    ${EndIf}
+
     !insertmacro wails.setShellContext
 
     RMDir /r "$AppData\${PRODUCT_EXECUTABLE}" # Remove the WebView2 DataPath
