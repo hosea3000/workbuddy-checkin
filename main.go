@@ -19,7 +19,7 @@ func main() {
 	app := NewApp()
 
 	err := wails.Run(&options.App{
-		Title:             "workbuddy-checkin",
+		Title:             "WorkBuddy 自动签到",
 		Width:             820,
 		Height:            640,
 		MinWidth:          720,

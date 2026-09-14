@@ -187,7 +187,7 @@ func TestRefreshUnauthorizedMarksRelogin(t *testing.T) {
 	if got.Status != model.StatusReloginRequired {
 		t.Errorf("expected relogin_required, got %q", got.Status)
 	}
-	if len(n.titles) == 0 || n.titles[0] != "workbuddy-checkin" {
+	if len(n.titles) == 0 || n.titles[0] != "WorkBuddy 自动签到" {
 		t.Errorf("expected relogin notification, got %v", n.titles)
 	}
 }

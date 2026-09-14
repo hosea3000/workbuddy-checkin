@@ -34,8 +34,8 @@ onMounted(async () => {
 <template>
   <div class="h-screen flex flex-col bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100">
     <header class="h-14 shrink-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3 px-4">
-      <img src="/icon.png" alt="workbuddy-checkin" class="w-7 h-7 rounded-lg object-cover" />
-      <div class="font-semibold text-sm">workbuddy-checkin</div>
+      <img src="/icon.png" alt="WorkBuddy 自动签到" class="w-7 h-7 rounded-lg object-cover" />
+      <div class="font-semibold text-sm">WorkBuddy 自动签到</div>
       <div class="ml-auto flex items-center gap-3">
         <button
           v-if="update.hasUpdate || update.pendingVersion"
