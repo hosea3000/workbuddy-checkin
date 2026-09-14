@@ -12,6 +12,9 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+// version 由发布构建通过 -ldflags "-X main.version=<tag>" 注入，本地开发保持 dev。
+var version = "dev"
+
 func main() {
 	app := NewApp()
 
