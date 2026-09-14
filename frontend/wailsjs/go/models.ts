@@ -185,13 +185,7 @@ export namespace model {
 	export class Settings {
 	    checkinHour: number;
 	    checkinMinute: number;
-	    catchUpOnStart: boolean;
-	    retryOnFailure: boolean;
-	    notifySuccess: boolean;
-	    notifyFailure: boolean;
 	    autoStart: boolean;
-	    minimizeToTrayOnClose: boolean;
-	    checkUpdateOnStart: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -201,13 +195,7 @@ export namespace model {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.checkinHour = source["checkinHour"];
 	        this.checkinMinute = source["checkinMinute"];
-	        this.catchUpOnStart = source["catchUpOnStart"];
-	        this.retryOnFailure = source["retryOnFailure"];
-	        this.notifySuccess = source["notifySuccess"];
-	        this.notifyFailure = source["notifyFailure"];
 	        this.autoStart = source["autoStart"];
-	        this.minimizeToTrayOnClose = source["minimizeToTrayOnClose"];
-	        this.checkUpdateOnStart = source["checkUpdateOnStart"];
 	    }
 	}
 	

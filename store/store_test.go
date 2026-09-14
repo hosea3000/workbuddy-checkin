@@ -95,7 +95,7 @@ func TestSettingsPartialFileFillsDefaults(t *testing.T) {
 	if got.CheckinHour != 7 || got.CheckinMinute != 5 {
 		t.Errorf("explicit fields lost: %+v", got)
 	}
-	if !got.CatchUpOnStart || !got.MinimizeToTray {
+	if got.AutoStart {
 		t.Errorf("missing fields should keep defaults: %+v", got)
 	}
 }

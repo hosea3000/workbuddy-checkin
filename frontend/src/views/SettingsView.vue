@@ -14,13 +14,7 @@ const toast = useToast()
 const form = reactive<Settings>({
   checkinHour: 9,
   checkinMinute: 30,
-  catchUpOnStart: true,
-  retryOnFailure: true,
-  notifySuccess: true,
-  notifyFailure: true,
   autoStart: false,
-  minimizeToTrayOnClose: true,
-  checkUpdateOnStart: true,
 })
 const saving = ref(false)
 
@@ -93,32 +87,8 @@ async function openDataDir() {
         <input v-model.number="form.checkinMinute" type="number" min="0" max="59" class="w-14 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-sm" />
       </div>
       <label class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer">
-        <div><div class="text-sm font-medium">启动时补签</div><div class="text-xs text-slate-500 mt-0.5">错过了签到时间，开机后立即补签</div></div>
-        <input v-model="form.catchUpOnStart" type="checkbox" class="w-9 h-5 accent-indigo-600" />
-      </label>
-      <label class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer">
-        <div><div class="text-sm font-medium">失败自动重试</div><div class="text-xs text-slate-500 mt-0.5">间隔 30 分钟，每天最多 3 次</div></div>
-        <input v-model="form.retryOnFailure" type="checkbox" class="w-9 h-5 accent-indigo-600" />
-      </label>
-      <label class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer">
-        <div><div class="text-sm font-medium">成功通知</div><div class="text-xs text-slate-500 mt-0.5">签到成功时弹一条通知</div></div>
-        <input v-model="form.notifySuccess" type="checkbox" class="w-9 h-5 accent-indigo-600" />
-      </label>
-      <label class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer">
-        <div><div class="text-sm font-medium">失败通知</div><div class="text-xs text-slate-500 mt-0.5">签到失败时弹一条通知</div></div>
-        <input v-model="form.notifyFailure" type="checkbox" class="w-9 h-5 accent-indigo-600" />
-      </label>
-      <label class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer">
         <div><div class="text-sm font-medium">开机自启</div><div class="text-xs text-slate-500 mt-0.5">写入 HKCU，无需管理员权限</div></div>
         <input v-model="form.autoStart" type="checkbox" class="w-9 h-5 accent-indigo-600" />
-      </label>
-      <label class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer">
-        <div><div class="text-sm font-medium">关闭窗口时最小化到托盘</div><div class="text-xs text-slate-500 mt-0.5">关闭后仍在后台运行并按时签到</div></div>
-        <input v-model="form.minimizeToTrayOnClose" type="checkbox" class="w-9 h-5 accent-indigo-600" />
-      </label>
-      <label class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer">
-        <div><div class="text-sm font-medium">启动时检查更新</div><div class="text-xs text-slate-500 mt-0.5">从 GitHub Release 检查新版本</div></div>
-        <input v-model="form.checkUpdateOnStart" type="checkbox" class="w-9 h-5 accent-indigo-600" />
       </label>
     </div>
 

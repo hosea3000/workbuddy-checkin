@@ -93,12 +93,7 @@ type Credential struct {
 // model/settings.go
 type Settings struct {
     CheckinHour, CheckinMinute int
-    CatchUpOnStart             bool
-    RetryOnFailure             bool
-    NotifySuccess, NotifyFailure bool
     AutoStart                  bool
-    MinimizeToTrayOnClose      bool
-    CheckUpdateOnStart         bool
 }
 ```
 
@@ -235,7 +230,7 @@ performCheckin(cred):
 
 ### 7.3 补签（F5）
 
-`CatchUp()` 的判定：`settings.CatchUpOnStart && now >= 今日签到点 && 凭证的 TodaySuccess 不为真（或 TodayDate 不是今天）` → 立即 `runAll()`（跳过已成功账号）。
+`CatchUp()` 的判定：`now >= 今日签到点 && 凭证的 TodaySuccess 不为真（或 TodayDate 不是今天）` → 立即 `runAll()`（跳过已成功账号）。补签、失败重试、成功/失败通知均为默认行为，不提供开关。
 调用点：应用启动（托盘就绪后）、休眠唤醒、跨天（timer 触发时若发现日期变更）。
 
 ## 8. 安全与隐私

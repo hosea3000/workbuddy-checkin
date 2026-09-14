@@ -103,6 +103,14 @@ Wails 首次 `-nsis` 构建会生成 `build/windows/installer/project.nsi`。将
 
 **理由**：决策 5 放弃回滚后，坏版本一旦发布只能手动重装，发布前测试的边际价值更高。
 
+### 决策 11：卸载时拒绝运行中的应用
+
+卸载脚本在开始时用 NSIS 内置 `FindWindow` 按托盘窗口类名 `WorkbuddyCheckinTray` 检测应用是否在运行；命中则弹提示并用 `Quit` 立即结束卸载器（而非 `Abort`——`Abort` 只中止当前 section，不会退出卸载器进程）。
+
+**理由**：应用运行中会锁住 exe，继续卸载会残留文件或失败；托盘消息窗口在应用运行时始终存在（即使主窗口已隐藏），类名稳定可靠。
+
+**替代方案**：按进程名检测需引入 `nsProcess` 插件；按 exe 文件占用检测不稳定。均放弃。
+
 ## Risks / Trade-offs
 
 - [未签名导致 SmartScreen/杀软拦截] → 开源可查、README 说明、仅写 HKCU、不触碰敏感注册表位置；签名留待后续评估。

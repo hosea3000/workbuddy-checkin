@@ -48,18 +48,6 @@ func (a *App) CheckUpdate() model.UpdateCheckResult {
 	return result
 }
 
-// CheckUpdateOnStartup 按设置项「启动时检查更新」决定是否在启动时检查；关闭时直接返回已最新。
-func (a *App) CheckUpdateOnStartup() model.UpdateCheckResult {
-	if !a.store.GetSettings().CheckUpdateOnStart {
-		return model.UpdateCheckResult{
-			Status:         model.UpdateStatusUpToDate,
-			CurrentVersion: version,
-			Message:        "已关闭启动时检查更新",
-		}
-	}
-	return a.CheckUpdate()
-}
-
 // UpdateProgress 返回最近一次更新下载的进度（前端轮询）。
 func (a *App) UpdateProgress() model.UpdateDownloadEvent {
 	a.mu.Lock()

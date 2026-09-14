@@ -8,8 +8,6 @@ export function CancelLogin():Promise<void>;
 
 export function CheckUpdate():Promise<model.UpdateCheckResult>;
 
-export function CheckUpdateOnStartup():Promise<model.UpdateCheckResult>;
-
 export function CheckinAll():Promise<Array<model.CheckinResult>>;
 
 export function CheckinNow(arg1:string):Promise<model.CheckinResult>;

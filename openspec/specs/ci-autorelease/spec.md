@@ -1,4 +1,10 @@
-## ADDED Requirements
+# ci-autorelease Specification
+
+## Purpose
+
+推送 `v*` tag 时自动构建 Windows 产物、注入版本号、发布原始可执行文件与 per-user 中文安装器两个资产，并在发布前做构建门禁、在卸载时拒绝运行中的应用。
+
+## Requirements
 
 ### Requirement: Tag 触发发布
 
@@ -55,3 +61,15 @@
 #### Scenario: 测试失败中止发布
 - **WHEN** 发布流程中 `go vet` 或 `go test` 失败
 - **THEN** 不构建、不创建 Release
+
+### Requirement: 卸载时拒绝运行中的应用
+
+卸载程序 SHALL 在检测到应用正在运行时中止卸载并结束卸载器进程，同时提示用户先退出应用；SHALL NOT 在应用运行中继续卸载或删除程序文件。应用未运行时 SHALL 正常卸载。
+
+#### Scenario: 应用运行时卸载
+- **WHEN** 用户运行卸载程序且应用正在运行（含仅驻留托盘）
+- **THEN** 弹出中文提示「应用正在运行，请先退出后再卸载」，卸载器随即关闭，程序文件保留
+
+#### Scenario: 应用未运行时卸载
+- **WHEN** 用户运行卸载程序且应用未运行
+- **THEN** 正常执行卸载

@@ -14,10 +14,6 @@ export function CheckUpdate() {
   return window['go']['main']['App']['CheckUpdate']();
 }
 
-export function CheckUpdateOnStartup() {
-  return window['go']['main']['App']['CheckUpdateOnStartup']();
-}
-
 export function CheckinAll() {
   return window['go']['main']['App']['CheckinAll']();
 }

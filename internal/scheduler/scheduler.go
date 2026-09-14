@@ -125,7 +125,6 @@ func (s *Scheduler) RunAll(ctx context.Context) []model.CheckinResult {
 	s.runMu.Lock()
 	defer s.runMu.Unlock()
 
-	settings := s.store.GetSettings()
 	now := s.now()
 	var results []model.CheckinResult
 
@@ -150,7 +149,7 @@ func (s *Scheduler) RunAll(ctx context.Context) []model.CheckinResult {
 			continue
 		}
 		results = append(results, res)
-		if !res.Success && ShouldRetry(mustGet(s.store, c.ID), s.now(), settings) {
+		if !res.Success && ShouldRetry(mustGet(s.store, c.ID), s.now()) {
 			s.scheduleRetry(ctx, c.ID)
 		}
 	}
@@ -168,9 +167,8 @@ func (s *Scheduler) scheduleRetry(ctx context.Context, id string) {
 		}
 		s.runMu.Lock()
 		defer s.runMu.Unlock()
-		settings := s.store.GetSettings()
 		c, ok := s.store.GetCredential(id)
-		if !ok || !ShouldRetry(c, s.now(), settings) {
+		if !ok || !ShouldRetry(c, s.now()) {
 			return
 		}
 		if _, err := s.svc.PerformCheckin(ctx, id); err != nil {

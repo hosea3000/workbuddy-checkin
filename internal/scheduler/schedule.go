@@ -16,11 +16,8 @@ func NextTrigger(now time.Time, hour, minute int) time.Time {
 	return today
 }
 
-// ShouldCatchUp 判定给定凭证此刻是否需要补签。
+// ShouldCatchUp 判定给定凭证此刻是否需要补签（启动/唤醒时补签为默认行为）。
 func ShouldCatchUp(cred model.Credential, now time.Time, settings model.Settings) bool {
-	if !settings.CatchUpOnStart {
-		return false
-	}
 	if cred.IsReloginRequired() {
 		return false
 	}
@@ -31,11 +28,8 @@ func ShouldCatchUp(cred model.Credential, now time.Time, settings model.Settings
 	return !cred.HasCheckedInToday(now)
 }
 
-// ShouldRetry 判定失败后是否应重试：开关开启、当日尝试未达上限、非待重登。
-func ShouldRetry(cred model.Credential, now time.Time, settings model.Settings) bool {
-	if !settings.RetryOnFailure {
-		return false
-	}
+// ShouldRetry 判定失败后是否应重试：当日尝试未达上限、非待重登、今日未成功（失败重试为默认行为）。
+func ShouldRetry(cred model.Credential, now time.Time) bool {
 	if cred.IsReloginRequired() {
 		return false
 	}

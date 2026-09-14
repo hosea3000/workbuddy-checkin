@@ -181,10 +181,9 @@ func (s *Service) notifyResult(c model.Credential, res model.CheckinResult) {
 	if s.notify == nil {
 		return
 	}
-	settings := s.store.GetSettings()
-	if res.Success && settings.NotifySuccess {
+	if res.Success {
 		s.notify.Notify("签到成功", displayName(c)+" "+res.Message)
-	} else if !res.Success && settings.NotifyFailure {
+	} else {
 		s.notify.Notify("签到失败", displayName(c)+"："+res.Message)
 	}
 }

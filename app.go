@@ -96,13 +96,10 @@ func (a *App) shutdown(ctx context.Context) {
 	}
 }
 
-// beforeClose 返回 true 阻止窗口关闭（即隐藏到托盘）。
+// beforeClose 返回 true 阻止窗口关闭（即隐藏到托盘）。关闭窗口一律最小化到托盘。
 // 主动退出时 quitting 已置位，须放行，否则最小化到托盘会吞掉退出。
 func (a *App) beforeClose(ctx context.Context) bool {
 	if a.quitting.Load() {
-		return false
-	}
-	if !a.store.GetSettings().MinimizeToTray {
 		return false
 	}
 	a.notifyCloseTipOnce()

@@ -20,7 +20,7 @@ const summaryText = computed(() => {
 onMounted(async () => {
   update.loadVersion()
   update.loadPending()
-  update.checkOnStartup()
+  update.check()
   if (route.name === 'welcome') return
   const has = await api.hasAccounts()
   if (!has) {

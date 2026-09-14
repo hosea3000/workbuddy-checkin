@@ -31,7 +31,6 @@ export const api = {
   hasAccounts: () => App.HasAccounts(),
   getVersion: () => App.GetVersion(),
   checkUpdate: () => App.CheckUpdate(),
-  checkUpdateOnStartup: () => App.CheckUpdateOnStartup(),
   downloadAndApplyUpdate: () => App.DownloadAndApplyUpdate(),
   applyUpdateAndRestart: () => App.ApplyUpdateAndRestart(),
   updateProgress: () => App.UpdateProgress(),

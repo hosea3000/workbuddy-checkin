@@ -36,7 +36,7 @@ func TestNextTriggerExactlyNow(t *testing.T) {
 
 func TestShouldCatchUp(t *testing.T) {
 	now := time.Date(2026, 9, 14, 11, 0, 0, 0, time.Local)
-	settings := model.DefaultSettings() // 补签开
+	settings := model.DefaultSettings()
 
 	unsign := model.Credential{Status: model.StatusActive}
 	if !ShouldCatchUp(unsign, now, settings) {
@@ -46,11 +46,6 @@ func TestShouldCatchUp(t *testing.T) {
 	signed := model.Credential{Status: model.StatusActive, TodayDate: "2026-09-14", TodaySuccess: true}
 	if ShouldCatchUp(signed, now, settings) {
 		t.Error("should skip already checked-in account")
-	}
-
-	settings.CatchUpOnStart = false
-	if ShouldCatchUp(unsign, now, settings) {
-		t.Error("catch-up switch off must disable")
 	}
 }
 
@@ -64,26 +59,25 @@ func TestShouldCatchUpBeforeTrigger(t *testing.T) {
 
 func TestShouldRetryLimit(t *testing.T) {
 	now := time.Date(2026, 9, 14, 11, 0, 0, 0, time.Local)
-	settings := model.DefaultSettings()
 
 	c := model.Credential{Status: model.StatusActive, TodayDate: "2026-09-14", TodayAttempts: 1}
-	if !ShouldRetry(c, now, settings) {
+	if !ShouldRetry(c, now) {
 		t.Error("attempts=1 should retry")
 	}
 	c.TodayAttempts = MaxRetriesPerDay
-	if ShouldRetry(c, now, settings) {
+	if ShouldRetry(c, now) {
 		t.Error("at limit must not retry")
 	}
 
 	c.TodayAttempts = 1
 	c.Status = model.StatusReloginRequired
-	if ShouldRetry(c, now, settings) {
+	if ShouldRetry(c, now) {
 		t.Error("relogin_required must not retry")
 	}
 
 	c.Status = model.StatusActive
 	c.TodaySuccess = true
-	if ShouldRetry(c, now, settings) {
+	if ShouldRetry(c, now) {
 		t.Error("already successful today must not retry")
 	}
 }

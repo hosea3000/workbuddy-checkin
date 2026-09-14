@@ -31,9 +31,6 @@ export const useUpdateStore = defineStore('update', {
     async loadPending() {
       this.pending = await api.pendingUpdateInfo()
     },
-    async checkOnStartup() {
-      this.result = await api.checkUpdateOnStartup()
-    },
     async check() {
       this.checking = true
       try {
