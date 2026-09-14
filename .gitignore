@@ -1,0 +1,25 @@
+# Wails 构建产物
+build/bin/
+
+# Go
+*.exe
+*.exe~
+*.test
+*.out
+vendor/
+
+# 前端
+node_modules/
+frontend/dist/
+frontend/package.json.md5
+
+# 编辑器 / 系统
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# 本地环境
+.env
+.env.*
+*.local
