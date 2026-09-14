@@ -94,6 +94,7 @@ type Credential struct {
 type Settings struct {
     CheckinHour, CheckinMinute int
     AutoStart                  bool
+    UpdateProxy                string // 更新检查与下载的加速代理前缀，空为直连
 }
 ```
 

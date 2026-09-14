@@ -186,6 +186,7 @@ export namespace model {
 	    checkinHour: number;
 	    checkinMinute: number;
 	    autoStart: boolean;
+	    updateProxy: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -196,6 +197,7 @@ export namespace model {
 	        this.checkinHour = source["checkinHour"];
 	        this.checkinMinute = source["checkinMinute"];
 	        this.autoStart = source["autoStart"];
+	        this.updateProxy = source["updateProxy"];
 	    }
 	}
 	

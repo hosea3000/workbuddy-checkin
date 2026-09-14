@@ -15,6 +15,7 @@ const form = reactive<Settings>({
   checkinHour: 9,
   checkinMinute: 30,
   autoStart: false,
+  updateProxy: '',
 })
 const saving = ref(false)
 
@@ -135,6 +136,23 @@ async function openDataDir() {
       <div v-else-if="update.progress?.phase === 'error'" class="text-xs text-rose-500 mt-2">{{ update.progress.message }}</div>
       <div v-else-if="update.pendingVersion" class="text-xs text-slate-500 mt-2">
         新版本 v{{ update.pendingVersion }} 已下载，点击「重启更新」生效
+      </div>
+      <div class="flex items-center justify-between gap-4 border-t border-slate-100 dark:border-slate-800 mt-3 pt-3">
+        <div>
+          <div class="text-sm font-medium">GitHub 加速代理</div>
+          <div class="text-xs text-slate-500 mt-0.5">检查更新与下载均走此代理，留空直连</div>
+        </div>
+        <input
+          v-model="form.updateProxy"
+          list="update-proxy-options"
+          placeholder="不使用代理"
+          class="w-52 shrink-0 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-sm"
+        />
+        <datalist id="update-proxy-options">
+          <option value="https://gh-proxy.com"></option>
+          <option value="https://ghfast.top"></option>
+          <option value="https://gh.llkk.cc"></option>
+        </datalist>
       </div>
     </div>
 

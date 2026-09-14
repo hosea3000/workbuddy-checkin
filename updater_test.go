@@ -50,7 +50,7 @@ func TestCheckForUpdatesUpdateAvailable(t *testing.T) {
 	}))
 	defer server.Close()
 
-	result := checkForUpdates(server.Client(), "0.1.1", server.URL)
+	result := checkForUpdates(server.Client(), "0.1.1", server.URL, "")
 	if result.Status != model.UpdateStatusAvailable {
 		t.Fatalf("status = %q, want update-available", result.Status)
 	}
@@ -72,7 +72,7 @@ func TestCheckForUpdatesMultiAssetsMatchExe(t *testing.T) {
 	}))
 	defer server.Close()
 
-	result := checkForUpdates(server.Client(), "0.1.9", server.URL)
+	result := checkForUpdates(server.Client(), "0.1.9", server.URL, "")
 	if result.Status != model.UpdateStatusAvailable {
 		t.Fatalf("status = %q, want update-available", result.Status)
 	}
@@ -88,7 +88,7 @@ func TestCheckForUpdatesAssetMissing(t *testing.T) {
 	}))
 	defer server.Close()
 
-	result := checkForUpdates(server.Client(), "0.2.0", server.URL)
+	result := checkForUpdates(server.Client(), "0.2.0", server.URL, "")
 	if result.Status != model.UpdateStatusAvailable {
 		t.Fatalf("status = %q, want update-available", result.Status)
 	}
@@ -109,6 +109,66 @@ func TestFindAssetDownloadURL(t *testing.T) {
 	}
 }
 
+func TestProxiedURL(t *testing.T) {
+	const raw = "https://github.com/hosea3000/workbuddy-checkin/releases/download/v1/workbuddy-checkin.exe"
+	cases := []struct {
+		name  string
+		proxy string
+		want  string
+	}{
+		{"空代理直连", "", raw},
+		{"带 scheme", "https://gh-proxy.com", "https://gh-proxy.com/" + raw},
+		{"末尾斜杠", "https://ghfast.top/", "https://ghfast.top/" + raw},
+		{"缺 scheme 补 https", "gh.llkk.cc", "https://gh.llkk.cc/" + raw},
+		{"两侧空白", "  https://gh-proxy.com  ", "https://gh-proxy.com/" + raw},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := proxiedURL(tc.proxy, raw); got != tc.want {
+				t.Fatalf("proxiedURL(%q) = %q, want %q", tc.proxy, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestCheckForUpdatesProxyFallbackToDirect(t *testing.T) {
+	// 模拟不支持 api.github.com 的代理（如 ghfast.top / gh.llkk.cc）：一律 403。
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+	}))
+	defer proxy.Close()
+	direct := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"tag_name":"v0.9.0","html_url":"https://github.com/x/y/releases/tag/v0.9.0"}`))
+	}))
+	defer direct.Close()
+
+	result := checkForUpdates(direct.Client(), "0.1.0", direct.URL, proxy.URL)
+	if result.Status != model.UpdateStatusAvailable {
+		t.Fatalf("代理 403 时应回退直连，status = %q, want update-available", result.Status)
+	}
+	if result.LatestVersion != "0.9.0" {
+		t.Fatalf("latest = %q, want 0.9.0", result.LatestVersion)
+	}
+}
+
+func TestCheckForUpdatesProxySuccess(t *testing.T) {
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"tag_name":"v0.9.0","html_url":"https://github.com/x/y/releases/tag/v0.9.0"}`))
+	}))
+	defer proxy.Close()
+	direct := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		panic("代理可用时不应回退直连")
+	}))
+	direct.Close()
+
+	result := checkForUpdates(proxy.Client(), "0.1.0", "https://api.github.com", proxy.URL)
+	if result.Status != model.UpdateStatusAvailable {
+		t.Fatalf("status = %q, want update-available", result.Status)
+	}
+}
+
 func TestCheckForUpdatesUpToDate(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -116,7 +176,7 @@ func TestCheckForUpdatesUpToDate(t *testing.T) {
 	}))
 	defer server.Close()
 
-	result := checkForUpdates(server.Client(), "0.1.1", server.URL)
+	result := checkForUpdates(server.Client(), "0.1.1", server.URL, "")
 	if result.Status != model.UpdateStatusUpToDate {
 		t.Fatalf("status = %q, want up-to-date", result.Status)
 	}
@@ -131,7 +191,7 @@ func TestCheckForUpdatesReleaseNotFound(t *testing.T) {
 	}))
 	defer server.Close()
 
-	result := checkForUpdates(server.Client(), "0.1.1", server.URL)
+	result := checkForUpdates(server.Client(), "0.1.1", server.URL, "")
 	if result.Status != model.UpdateStatusError {
 		t.Fatalf("status = %q, want error", result.Status)
 	}
@@ -147,7 +207,7 @@ func TestCheckForUpdatesNetworkError(t *testing.T) {
 	server.Close()
 
 	// 使用已关闭 server 的地址构造必然失败的请求
-	result := checkForUpdates(&http.Client{Timeout: time.Second}, "0.1.1", server.URL)
+	result := checkForUpdates(&http.Client{Timeout: time.Second}, "0.1.1", server.URL, "")
 	if result.Status != model.UpdateStatusError {
 		t.Fatalf("status = %q, want error", result.Status)
 	}

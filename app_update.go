@@ -30,7 +30,11 @@ func (a *App) CheckUpdate() model.UpdateCheckResult {
 			Message:        "当前为开发版本，跳过更新检查",
 		}
 	}
-	result := checkForUpdates(updateClient, version, updateAPIBaseURL)
+	proxy := ""
+	if a.store != nil {
+		proxy = a.store.GetSettings().UpdateProxy
+	}
+	result := checkForUpdates(updateClient, version, updateAPIBaseURL, proxy)
 	a.mu.Lock()
 	if result.Status == model.UpdateStatusAvailable {
 		a.updateDownloadURL = result.DownloadURL
@@ -92,6 +96,9 @@ func (a *App) DownloadAndApplyUpdate() string {
 	a.mu.Unlock()
 	if url == "" {
 		return "暂无可用更新，请先检查更新"
+	}
+	if a.store != nil {
+		url = proxiedURL(a.store.GetSettings().UpdateProxy, url)
 	}
 	exePath, err := os.Executable()
 	if err != nil {
