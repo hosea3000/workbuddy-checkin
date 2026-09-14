@@ -306,7 +306,8 @@ openspec/specs/
 ├── settings/              # F7
 ├── tray-integration/      # F8 托盘/自启/单实例/静默启动
 ├── first-run/             # F10
-└── ci-autorelease/        # tag → Release exe（照抄 health-tool）
+├── app-update/            # F9 检查更新 + 下载 + 自替换升级
+└── ci-autorelease/        # tag → Release exe + per-user 中文 NSIS 安装器（照抄 health-tool）
 ```
 
 ## 12. 开放问题
@@ -317,7 +318,7 @@ openspec/specs/
 | 2 | ~~是否展示剩余额度（`FetchQuotaPersonal`）~~ | 已定：卡片显示积分余额（= remaining），启动/签到后/每 1h/手动刷新（见 §7.1.1） |
 | 3 | 签到点是否支持多个（如 09:30 + 21:30） | 上游幂等，多触发点能提高「关机漏签」容错；倾向 v1.1 加 |
 | 4 | 是否需要「便携模式」（数据放 exe 同目录） | 需要用户级自启路径配合，成本不高；倾向 v1.1 |
-| 5 | 更新器是否一期就做 | health-tool 已有完整实现，移植约半天；可放 M5 |
+| 5 | ~~更新器是否一期就做~~ | 已定：随安装器一起落地（移植 health-tool updater，见 `app-update`） |
 | 6 | 前端是否复用 work2api 的 UI 组件库 | 两端无共享 module，倾向各自维护但抄样式与交互 |
 | 7 | 是否需要「导出诊断包」 | 用户反馈问题时很有用（脱敏日志）；倾向 P2 |
 
@@ -331,4 +332,4 @@ openspec/specs/
 | 账号服务 | `internal/account/*_test.go`：登录状态机（假 client）、去重、续期失败置位 |
 | 余额刷新 | `internal/checkin/*_test.go`：假 client 验证刷新触发点、失败不改状态、`relogin_required` 跳过 |
 | 端到端（Windows） | PRD §8 验收清单人工执行；`wails dev` 下浏览器调 UI |
-| CI | `go vet ./... && go test ./...`（Linux 跑 stub 分支）+ `wails build -platform windows/amd64` |
+| CI | `go vet ./... && go test ./...`（Linux 跑 stub 分支）+ `wails build -nsis -installscope user -platform windows/amd64`，发布 exe 与安装器双资产 |

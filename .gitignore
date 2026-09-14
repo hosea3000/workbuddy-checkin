@@ -1,5 +1,7 @@
 # Wails 构建产物
 build/bin/
+build/windows/installer/wails_tools.nsh
+build/windows/installer/tmp/
 
 # Go
 *.exe

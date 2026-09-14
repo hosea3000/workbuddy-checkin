@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/hosea3000/workbuddy-checkin/internal/account"
 	"github.com/hosea3000/workbuddy-checkin/internal/checkin"
 	"github.com/hosea3000/workbuddy-checkin/internal/scheduler"
+	"github.com/hosea3000/workbuddy-checkin/model"
 	"github.com/hosea3000/workbuddy-checkin/store"
 	"github.com/hosea3000/workbuddy-checkin/upstream/codebuddy"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -36,6 +38,10 @@ type App struct {
 	mu            sync.Mutex
 	closeTipShown bool
 	quitting      atomic.Bool
+
+	updateDownloadURL   string
+	updateLatestVersion string
+	updateProgress      model.UpdateDownloadEvent
 }
 
 // NewApp 构造应用并初始化存储与各服务。
@@ -67,6 +73,10 @@ func NewApp() *App {
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	// 清理上次更新遗留的 .part 残渣与孤儿版本标记（保留待应用的 .new）。
+	if exePath, err := os.Executable(); err == nil {
+		cleanupUpdateArtifacts(exePath)
+	}
 	a.scheduler.Start(ctx)
 	// 窗口可见性由 main.go 的 StartHidden（--hidden 标记）决定，此处不再补 show。
 	a.tray.Start(a.trayTip())
