@@ -4,6 +4,8 @@
     <dict>
         <key>CFBundlePackageType</key>
         <string>APPL</string>
+        <key>LSUIElement</key>
+        <true/>
         <key>CFBundleName</key>
         <string>{{.Info.ProductName}}</string>
         <key>CFBundleDisplayName</key>

@@ -12,15 +12,16 @@
 | 存储 | JSON 文件（`os.UserConfigDir()/workbuddy-checkin/`） | 账号数个位级、数据 < 1 MB，SQLite 是过度设计；health-tool 已验证 |
 | 网络 | 标准库 `net/http` | 上游客户端无第三方依赖 |
 | 系统集成（Windows） | `golang.org/x/sys/windows` + `go-toast` | 自启（HKCU Run）、托盘（手写 Win32）、Toast 通知 |
-| 系统集成（macOS） | 系统命令（无新依赖） | 自启走 LaunchAgent + `launchctl`、通知走 `osascript`、更新走 `hdiutil`/`open` |
+| 系统集成（macOS） | 系统命令 + 手写 cgo/Objective-C（无新依赖） | 自启走 LaunchAgent + `launchctl`、通知走 `osascript`、更新走 `hdiutil`/`open`；菜单栏图标走 cgo `NSStatusItem`（`osascript` 无法创建常驻状态栏项） |
 | 无 GUI 平台 | `*_stub.go`（`//go:build !windows && !darwin`） | Linux 上可 `go test ./...` 与 `wails dev` 调试业务逻辑 |
 
 **平台能力矩阵**：
 
 | 能力 | Windows | macOS |
 |---|---|---|
-| 托盘 | Shell_NotifyIcon（手写 Win32） | 无 |
-| 关窗语义 | 隐藏到托盘（`beforeClose` 返回 true + `HideWindowOnClose`） | 退出应用（`beforeClose` 返回 false + `HideWindowOnClose=false`） |
+| 托盘 | Shell_NotifyIcon（手写 Win32） | 菜单栏图标 `NSStatusItem`（手写 cgo/Objective-C） |
+| 关窗语义 | 隐藏到托盘（`beforeClose` 返回 true + `HideWindowOnClose`） | 隐藏窗口到菜单栏（`beforeClose` 返回 true + `wruntime.WindowHide` → `orderOut`） |
+| Dock 图标 | 不适用 | 无（`Info.plist` 的 `LSUIElement` + `startup` 兜底 `Accessory` 策略） |
 | 自启 | HKCU Run | LaunchAgent plist + `launchctl bootstrap/bootout` |
 | 静默启动 | `--hidden` | `--hidden`（LaunchAgent 传参） |
 | 静默后唤起 | 双击 exe / 托盘双击 | 再次双击 `.app`（单实例锁 `OnSecondInstanceLaunch`） |
@@ -51,7 +52,9 @@ workbuddy-checkin/
 ├── main.go                  # Wails 入口（单实例锁、StartHidden、OnBeforeClose）
 ├── app.go                   # App 结构 + 所有绑定方法（唯一前后端契约面）
 ├── app_*.go                 # 按域拆分的绑定方法（account/checkin/settings）
-├── tray_windows.go / _stub  # 托盘（Shell_NotifyIcon；macOS 复用 stub 空实现）
+├── tray_windows.go          # 托盘（Shell_NotifyIcon，手写 Win32）
+├── tray_darwin.go / .m / .h # 菜单栏图标（NSStatusItem，手写 cgo/Objective-C）
+├── tray_stub.go             # 其余平台空实现（//go:build !windows && !darwin）
 ├── autostart_windows.go     # HKCU Run
 ├── autostart_darwin.go      # LaunchAgent（+ autostart_macos.go：跨平台可测的 plist 生成）
 ├── notification_windows.go  # Toast
@@ -338,6 +341,9 @@ openspec/specs/
 | 7 | 是否需要「导出诊断包」 | 用户反馈问题时很有用（脱敏日志）；倾向 P2 |
 | 8 | ~~macOS 静默启动后能否经单实例锁唤出窗口~~ | 已实现路径（`OnSecondInstanceLaunch` → `showWindow`），**待 macOS 真机实测**；失败则改用 `ShowApplication` 等底层显示 |
 | 9 | macOS 补签无唤醒钩子 | 接受每小时巡检兜底（最迟延迟 1h）；若体验不足，后续在 `showWindow` 顺带 `RunAll` |
+| 10 | macOS 菜单栏图标能否与 Wails 共存（cgo `NSStatusItem`） | 已选独立实现，**完全不碰 `NSApplication.delegate`**，避免与 Wails 的 AppDelegate 冲突（`energye/systray` 会抢占 delegate，故弃用）；待 macOS 真机实测 |
+| 11 | macOS `Accessory` 激活策略下窗口能否抢到焦点 | 依赖 `wruntime.WindowShow` 内部的 `makeKeyAndOrderFront` + `activateIgnoringOtherApps`；**待 macOS 真机实测**，不足则临时切回 `Regular`（Dock 图标会闪现） |
+| 12 | macOS ⌘Q 是否应直接退出而非被 `beforeClose` 拦截 | **待 macOS 真机确定预期交互**；当前统一拦截为「隐藏窗口」，如不符合预期则在 ⌘Q 路径直接置 `quitting` |
 
 ## 13. 验证方式
 
@@ -348,5 +354,5 @@ openspec/specs/
 | 调度 | `scheduler/*_test.go`：注入假时钟，验证下次触发点、补签条件、重试次数上限 |
 | 账号服务 | `internal/account/*_test.go`：登录状态机（假 client）、去重、续期失败置位 |
 | 余额刷新 | `internal/checkin/*_test.go`：假 client 验证刷新触发点、失败不改状态、`relogin_required` 跳过 |
-| 端到端（Windows / macOS） | PRD §8 验收清单人工执行；`wails dev` 下浏览器调 UI。macOS 额外验证：关窗即退出、自启静默后双击唤起、dmg 更新流程 |
+| 端到端（Windows / macOS） | PRD §8 验收清单人工执行；`wails dev` 下浏览器调 UI。macOS 额外验证：关窗隐藏不退出、菜单栏左键弹菜单、Dock 无图标、`Accessory` 下窗口焦点、⌘Q 语义、自启静默后双击唤起、dmg 更新流程 |
 | CI | `go vet ./... && go test ./...`（Linux 跑 stub 分支）+ Windows job（`wails build -nsis ...`）+ macOS 矩阵 job（`darwin/amd64`、`darwin/arm64` 各出 dmg），发布 exe / 安装器 / 两个 dmg 四资产 |

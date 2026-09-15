@@ -79,6 +79,9 @@ func (a *App) startup(ctx context.Context) {
 	}
 	a.scheduler.Start(ctx)
 	// 窗口可见性由 main.go 的 StartHidden（--hidden 标记）决定，此处不再补 show。
+	// macOS 兜底切到 Accessory：Wails 在 applicationWillFinishLaunching 写死 Regular，
+	// 会覆盖 Info.plist 的 LSUIElement，故此处再设一次以隐藏 Dock 图标。
+	setActivationPolicyAccessory()
 	a.tray.Start(a.trayTip())
 	a.tray.SetTip(a.trayTip())
 	// 启动即巡检（托盘就绪后）：当天未签到的账号立即补签
@@ -96,17 +99,17 @@ func (a *App) shutdown(ctx context.Context) {
 	}
 }
 
-// beforeClose 决定窗口关闭行为。Windows 返回 true 阻止关闭（隐藏到托盘）；macOS 无托盘，
-// 关闭窗口即退出应用，返回 false。主动退出时 quitting 已置位，须放行。
+// beforeClose 决定窗口关闭行为。两平台均为「隐藏窗口、应用继续后台运行」：
+// Windows 由 HideWindowOnClose 隐藏到托盘；macOS 由这里显式 WindowHide（orderOut）。
+// 主动退出时 quitting 已置位，须放行。
 func (a *App) beforeClose(ctx context.Context) bool {
 	if a.quitting.Load() {
 		return false
 	}
-	if !isWindows() {
-		a.quitting.Store(true)
-		return false
-	}
 	a.notifyCloseTipOnce()
+	if isMac() {
+		wruntime.WindowHide(ctx)
+	}
 	return true
 }
 
@@ -126,15 +129,12 @@ func (a *App) wake() {
 }
 
 func (a *App) notifyCloseTipOnce() {
-	if !isWindows() {
-		return
-	}
 	a.mu.Lock()
 	first := !a.closeTipShown
 	a.closeTipShown = true
 	a.mu.Unlock()
 	if first && a.notifier != nil {
-		a.notifier.Notify("WorkBuddy 自动签到", "已最小化到托盘，应用仍在后台运行")
+		a.notifier.Notify("WorkBuddy 自动签到", "已隐藏到后台，应用仍在运行")
 	}
 }
 
