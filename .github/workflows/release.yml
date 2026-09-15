@@ -97,12 +97,22 @@ jobs:
       - name: Wails build
         run: wails build -clean -platform darwin/${{ matrix.arch }} -ldflags "-X main.version=${GITHUB_REF_NAME#v}"
 
+      - name: Fetch create-dmg
+        run: |
+          curl -fsSL https://github.com/create-dmg/create-dmg/archive/refs/tags/v1.2.1.tar.gz \
+            | tar xz
+
       - name: Package dmg
         run: |
-          hdiutil create -volname "WorkBuddy 自动签到" \
-            -srcfolder "build/bin/workbuddy-checkin.app" \
-            -ov -format UDZO \
-            "build/bin/WorkBuddy-checkin-${{ matrix.arch }}.dmg"
+          ./create-dmg-1.2.1/create-dmg \
+            --volname "workbuddycheckin" \
+            --window-size 660 400 \
+            --icon-size 100 \
+            --icon "workbuddy-checkin.app" 165 200 \
+            --app-drop-link 495 200 \
+            --no-internet-enable \
+            "build/bin/WorkBuddy-checkin-${{ matrix.arch }}.dmg" \
+            "build/bin/workbuddy-checkin.app"
 
       - name: Upload dmg
         env:
