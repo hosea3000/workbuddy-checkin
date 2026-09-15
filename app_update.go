@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/hosea3000/workbuddy-checkin/model"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -33,7 +34,7 @@ func (a *App) CheckUpdate() model.UpdateCheckResult {
 	if a.store != nil {
 		proxy = a.store.GetSettings().UpdateProxy
 	}
-	result := checkForUpdates(updateClient, version, updateAPIBaseURL, proxy)
+	result := checkForUpdates(updateClient, version, updateAPIBaseURL, proxy, runtime.GOOS, runtime.GOARCH)
 	a.mu.Lock()
 	if result.Status == model.UpdateStatusAvailable {
 		a.updateDownloadURL = result.DownloadURL

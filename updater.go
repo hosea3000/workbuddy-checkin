@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -135,19 +134,19 @@ func isUpToDate(current, latest string) bool {
 	return compareVersions(current, latest) >= 0
 }
 
-// checkForUpdates 请求 GitHub releases/latest 并映射为三态结果。client 与 baseURL 由调用方注入，便于测试。
+// checkForUpdates 请求 GitHub releases/latest 并映射为三态结果。client、baseURL 与平台由调用方注入，便于测试。
 // 配置了代理时优先经代理请求；代理不可用（部分代理不支持 api.github.com）时回退直连。
-func checkForUpdates(client *http.Client, currentVersion, baseURL, proxy string) model.UpdateCheckResult {
+func checkForUpdates(client *http.Client, currentVersion, baseURL, proxy, goos, goarch string) model.UpdateCheckResult {
 	if proxy != "" {
-		if result := fetchLatestRelease(client, currentVersion, proxiedURL(proxy, baseURL)); result.Status != model.UpdateStatusError {
+		if result := fetchLatestRelease(client, currentVersion, proxiedURL(proxy, baseURL), goos, goarch); result.Status != model.UpdateStatusError {
 			return result
 		}
 	}
-	return fetchLatestRelease(client, currentVersion, baseURL)
+	return fetchLatestRelease(client, currentVersion, baseURL, goos, goarch)
 }
 
-// fetchLatestRelease 发起一次 releases/latest 请求并解析结果。
-func fetchLatestRelease(client *http.Client, currentVersion, baseURL string) model.UpdateCheckResult {
+// fetchLatestRelease 发起一次 releases/latest 请求并解析结果。goos/goarch 决定匹配的更新资产名。
+func fetchLatestRelease(client *http.Client, currentVersion, baseURL, goos, goarch string) model.UpdateCheckResult {
 	result := model.UpdateCheckResult{
 		Status:         model.UpdateStatusError,
 		CurrentVersion: currentVersion,
@@ -182,7 +181,7 @@ func fetchLatestRelease(client *http.Client, currentVersion, baseURL string) mod
 		result.Message = "检查更新失败：响应解析异常"
 		return result
 	}
-	result.DownloadURL = findAssetDownloadURL(release.Assets, updateAssetNameFor(runtime.GOOS, runtime.GOARCH))
+	result.DownloadURL = findAssetDownloadURL(release.Assets, updateAssetNameFor(goos, goarch))
 	latest := strings.TrimPrefix(strings.TrimSpace(release.TagName), "v")
 	if isUpToDate(currentVersion, latest) {
 		result.Status = model.UpdateStatusUpToDate
