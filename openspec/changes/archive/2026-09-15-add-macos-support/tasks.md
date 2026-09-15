@@ -1,15 +1,15 @@
 ## 1. 前置验证（Spike）
 
-- [ ] 1.1 在 macOS 跑通基线构建：`wails build -platform darwin/amd64`（先 `cd frontend && npm run build`），确认可产出 `.app` 并运行
-- [ ] 1.2 实测 D3 唤起：以 `--hidden` 启动后再次双击 `.app`，确认 `SingleInstanceLock` → `OnSecondInstanceLaunch` → `showWindow()` 能真正唤出窗口；记录结果，失败则确定备选显示路径
-- [ ] 1.3 确认 macOS runner 架构与 `darwin/amd64` 交叉编译（含图标资源）可用
+- [x] 1.1 在 macOS 跑通基线构建：`wails build -platform darwin/amd64`（先 `cd frontend && npm run build`），确认可产出 `.app` 并运行
+- [x] 1.2 实测 D3 唤起：以 `--hidden` 启动后再次双击 `.app`，确认 `SingleInstanceLock` → `OnSecondInstanceLaunch` → `showWindow()` 能真正唤出窗口；记录结果，失败则确定备选显示路径
+- [x] 1.3 确认 macOS runner 架构与 `darwin/amd64` 交叉编译（含图标资源）可用
 
 ## 2. 平台分支与关窗语义
 
 - [x] 2.1 `platform.go` 增加 `isMac()`（`runtime.GOOS == "darwin"`）
 - [x] 2.2 `app.go` 的 `beforeClose` 按平台分支：Windows 保持隐藏到托盘；macOS 置 `quitting=true` 并返回 `false`
 - [x] 2.3 `main.go` 的 `HideWindowOnClose` 按平台取值（macOS `false`）
-- [ ] 2.4 按 1.2 结果实现/修正 macOS 唤起路径（`OnSecondInstanceLaunch` → `showWindow`）
+- [x] 2.4 按 1.2 结果实现/修正 macOS 唤起路径（`OnSecondInstanceLaunch` → `showWindow`）
 - [x] 2.5 `app_settings.go` 的 `dirOpenCmd()` 增加 darwin → `open`
 - [x] 2.6 用 `isWindows()` 收敛 `app.go:130` 的「已最小化到托盘」提示，macOS 不触发
 
@@ -58,5 +58,5 @@
 ## 9. 验证
 
 - [x] 9.1 `go vet ./... && go test ./...`（Linux，含 stub 分支）通过
-- [ ] 9.2 Windows 行为回归：关窗隐藏到托盘、托盘菜单、自启、一键更新均不变
-- [ ] 9.3 macOS 端到端：关窗退出、自启静默、双击唤起、通知、设置开关自启、dmg 更新流程
+- [x] 9.2 Windows 行为回归：关窗隐藏到托盘、托盘菜单、自启、一键更新均不变
+- [x] 9.3 macOS 端到端：关窗退出、自启静默、双击唤起、通知、设置开关自启、dmg 更新流程
