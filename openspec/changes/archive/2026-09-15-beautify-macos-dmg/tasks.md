@@ -11,6 +11,6 @@
 
 ## 3. 验证
 
-- [ ] 3.1 本地（macOS）或一次测试 tag 上跑通 macOS job，确认 dmg 挂载后含 app + 应用程序链接且位置正确、卷名为 `workbuddycheckin`
+- [x] 3.1 本地（macOS）或一次测试 tag 上跑通 macOS job，确认 dmg 挂载后含 app + 应用程序链接且位置正确、卷名为 `workbuddycheckin`
 - [x] 3.2 确认 Release 资产名与应用内更新查找的 `WorkBuddy-checkin-<arch>.dmg` 一致
-- [ ] 3.3 `openspec validate --changes "beautify-macos-dmg"` 通过后归档 change
+- [x] 3.3 `openspec validate --changes "beautify-macos-dmg"` 通过后归档 change
