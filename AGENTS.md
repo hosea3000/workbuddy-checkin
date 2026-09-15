@@ -1,6 +1,6 @@
 # AGENTS.md
 
-workbuddy-checkin：Windows 桌面小工具（Wails v2 + Go + Vue3），管理 CodeBuddy（腾讯）账号并自动签到。规划文档是唯一事实来源：`docs/PRD.md`（做什么，F1~F10）、`docs/DESIGN.md`（怎么做）。
+workbuddy-checkin：桌面小工具（Windows / macOS，Wails v2 + Go + Vue3），管理 CodeBuddy（腾讯）账号并自动签到。规划文档是唯一事实来源：`docs/PRD.md`（做什么，F1~F10）、`docs/DESIGN.md`（怎么做）。
 
 ## 命令
 
@@ -8,6 +8,8 @@ workbuddy-checkin：Windows 桌面小工具（Wails v2 + Go + Vue3），管理 C
 - 单包 / 单测：`go test ./internal/scheduler/`、`go test ./internal/scheduler/ -run TestRunAll`
 - 前端类型检查 + 构建：在 `frontend/` 跑 `npm run build`（= `vue-tsc --noEmit && vite build`）
 - Windows 构建：`wails build -platform windows/amd64`；开发：`wails dev`
+- macOS 构建（须在 macOS 上）：`wails build -platform darwin/arm64`（或 `darwin/amd64`），再用 `hdiutil create` 打包为 dmg
+- 平台编译自检：`GOOS=darwin GOARCH=arm64 go build ./...`（跨平台新增/改文件后至少跑一次）
 - 改过 `app*.go` 的绑定方法后：`wails generate module` 重生成 `frontend/wailsjs/`
 
 **顺序陷阱**：`main.go` 用 `//go:embed all:frontend/dist`，而 `frontend/dist` 被 gitignore。**全新 clone 必须先 `cd frontend && npm run build`，否则 `go build/test ./...` 直接失败**（CI 也是先建前端再 vet/test）。
@@ -30,7 +32,8 @@ workbuddy-checkin：Windows 桌面小工具（Wails v2 + Go + Vue3），管理 C
 - **不引入** gin、gorm、viper、wire、redis、sqlite 及任何 DI 框架。
 - 上游协议从 `/root/code/github/work2api/internal/upstream/codebuddy/` 逐字移植；本仓库与 work2api 不互通，勿复用其模块或依赖。
 - `upstream/codebuddy/headers.go` 的 CLI 伪装头与常量（`cli_version = 2.107.0` 等）冻结，禁改。
-- 系统集成（托盘/自启/通知）必须同时提供 `*_stub.go`（`//go:build !windows`），保证 Linux 下 `go test ./...` 可跑。
+- 系统集成（托盘/自启/通知）必须同时提供 `*_stub.go`（`//go:build !windows && !darwin`），保证 Linux 下 `go test ./...` 可跑。`tray_stub.go` 例外，保持 `//go:build !windows`（macOS 复用空托盘实现）。
+- macOS 系统集成只用系统命令（`launchctl`/`osascript`/`hdiutil`/`open`），**不引入新的第三方 Go 依赖**；不签名、不公证。
 - 存储是 JSON 文件（`os.UserConfigDir()/workbuddy-checkin/`），非 SQLite；原子写 + 损坏自愈（`.corrupt-<时间戳>`）。
 - 令牌明文 0600 存储；**日志 / UI / 通知永不出现 token**，UI 只暴露 `token_suffix`（末 8 位）。
 - 依赖方向单向无环：`main → internal/* → store → model`，`internal/* → upstream/codebuddy`。
@@ -39,5 +42,5 @@ workbuddy-checkin：Windows 桌面小工具（Wails v2 + Go + Vue3），管理 C
 
 - 无 Makefile；全局 CLAUDE.md 的 `make wire && make sqlc && make swag` / `make buildx env=...` 在本仓库不存在，勿照抄。
 - 前端不使用 Wails 事件传业务状态，一律轮询绑定方法（`LoginStatus` 1.5s / `ListAccounts` 30s）。
-- 版本号：`main.version` 由发布构建经 `-ldflags` 注入，本地开发为 `dev`；`wails.json` 的 `productVersion` 静态为 0.1.0，CI 构建时按 tag 覆盖。发布 = 推送 `v*` tag，`.github/workflows/release.yml` 自动建 Windows exe + NSIS 安装器 Release（tag 尾号 +1，如 v0.1.4）。
+- 版本号：`main.version` 由发布构建经 `-ldflags` 注入，本地开发为 `dev`；`wails.json` 的 `productVersion` 静态为 0.1.0，CI 构建时按 tag 覆盖。发布 = 推送 `v*` tag，`.github/workflows/release.yml` 自动建 Windows exe + NSIS 安装器 + macOS arm64/amd64 两枚 dmg 的 Release（tag 尾号 +1，如 v0.1.4）。
 - `build/bin/`、安装器临时文件、`frontend/dist/` 均被 gitignore。

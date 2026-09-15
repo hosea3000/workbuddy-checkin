@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 
 	"github.com/hosea3000/workbuddy-checkin/model"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -61,7 +60,7 @@ func (a *App) UpdateProgress() model.UpdateDownloadEvent {
 
 // PendingUpdateInfo 返回 exe 同目录是否存在已下载待应用（.new）的更新及其版本号。
 func (a *App) PendingUpdateInfo() model.PendingUpdateInfo {
-	if version == "" || version == "dev" || runtime.GOOS != "windows" {
+	if version == "" || version == "dev" || !isWindows() {
 		return model.PendingUpdateInfo{}
 	}
 	exePath, err := os.Executable()
@@ -85,7 +84,7 @@ func (a *App) DownloadAndApplyUpdate() string {
 	if version == "" || version == "dev" {
 		return "当前为开发版本，不支持自动更新"
 	}
-	if runtime.GOOS != "windows" {
+	if !isWindows() && !isMac() {
 		return "当前平台不支持自动更新，请通过 GitHub 手动更新"
 	}
 	if a.ctx == nil {
@@ -103,6 +102,9 @@ func (a *App) DownloadAndApplyUpdate() string {
 	exePath, err := os.Executable()
 	if err != nil {
 		return "无法定位程序路径，无法自动更新"
+	}
+	if isMac() {
+		return a.downloadAndApplyDarwin(url, exePath)
 	}
 	if !dirWritable(filepath.Dir(exePath)) {
 		return "程序目录不可写，请通过「前往 GitHub 查看」手动更新"
@@ -177,6 +179,9 @@ func (a *App) ApplyUpdateAndRestart() string {
 	exePath, err := os.Executable()
 	if err != nil {
 		return "无法定位程序路径，无法自动更新"
+	}
+	if isMac() {
+		return applyUpdateAndRestart(exePath, a.quit)
 	}
 	_, newPath, _, _ := exeUpdatePaths(exePath)
 	if _, err := os.Stat(newPath); err != nil {

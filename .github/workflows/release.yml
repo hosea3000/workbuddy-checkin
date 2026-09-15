@@ -56,3 +56,58 @@ jobs:
             build/bin/workbuddy-checkin.exe \
             build/bin/workbuddy-checkin-amd64-installer.exe \
             --generate-notes
+
+  release-macos:
+    needs: release
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.26
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm install && npm run build
+
+      - name: Vet and test
+        run: go vet ./... && go test ./...
+
+      - name: Set version from tag
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync('wails.json'));c.info={...c.info,productVersion:'$v'};fs.writeFileSync('wails.json',JSON.stringify(c,null,2));"
+
+      - name: Wails build
+        run: wails build -clean -platform darwin/${{ matrix.arch }} -ldflags "-X main.version=${GITHUB_REF_NAME#v}"
+
+      - name: Package dmg
+        run: |
+          hdiutil create -volname "WorkBuddy 自动签到" \
+            -srcfolder "build/bin/workbuddy-checkin.app" \
+            -ov -format UDZO \
+            "build/bin/WorkBuddy-checkin-${{ matrix.arch }}.dmg"
+
+      - name: Upload dmg
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "$GITHUB_REF_NAME" \
+            "build/bin/WorkBuddy-checkin-${{ matrix.arch }}.dmg" \
+            --clobber

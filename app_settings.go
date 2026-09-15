@@ -35,5 +35,8 @@ func dirOpenCmd() string {
 	if isWindows() {
 		return "explorer"
 	}
+	if isMac() {
+		return "open"
+	}
 	return "xdg-open"
 }

@@ -25,7 +25,7 @@ func main() {
 		MinWidth:          720,
 		MinHeight:         520,
 		StartHidden:       hiddenFromArgs(os.Args[1:]),
-		HideWindowOnClose: true,
+		HideWindowOnClose: isWindows(),
 		BackgroundColour:  &options.RGBA{R: 248, G: 250, B: 252, A: 1},
 		AssetServer: &assetserver.Options{
 			Assets: assets,

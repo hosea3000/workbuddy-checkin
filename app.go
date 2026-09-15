@@ -96,10 +96,14 @@ func (a *App) shutdown(ctx context.Context) {
 	}
 }
 
-// beforeClose 返回 true 阻止窗口关闭（即隐藏到托盘）。关闭窗口一律最小化到托盘。
-// 主动退出时 quitting 已置位，须放行，否则最小化到托盘会吞掉退出。
+// beforeClose 决定窗口关闭行为。Windows 返回 true 阻止关闭（隐藏到托盘）；macOS 无托盘，
+// 关闭窗口即退出应用，返回 false。主动退出时 quitting 已置位，须放行。
 func (a *App) beforeClose(ctx context.Context) bool {
 	if a.quitting.Load() {
+		return false
+	}
+	if !isWindows() {
+		a.quitting.Store(true)
 		return false
 	}
 	a.notifyCloseTipOnce()
@@ -122,6 +126,9 @@ func (a *App) wake() {
 }
 
 func (a *App) notifyCloseTipOnce() {
+	if !isWindows() {
+		return
+	}
 	a.mu.Lock()
 	first := !a.closeTipShown
 	a.closeTipShown = true

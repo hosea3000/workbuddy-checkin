@@ -109,6 +109,24 @@ func TestFindAssetDownloadURL(t *testing.T) {
 	}
 }
 
+func TestUpdateAssetNameFor(t *testing.T) {
+	cases := []struct {
+		goos   string
+		goarch string
+		want   string
+	}{
+		{"windows", "amd64", "workbuddy-checkin.exe"},
+		{"darwin", "amd64", "WorkBuddy-checkin-amd64.dmg"},
+		{"darwin", "arm64", "WorkBuddy-checkin-arm64.dmg"},
+		{"linux", "amd64", "workbuddy-checkin.exe"},
+	}
+	for _, tc := range cases {
+		if got := updateAssetNameFor(tc.goos, tc.goarch); got != tc.want {
+			t.Fatalf("updateAssetNameFor(%q, %q) = %q, want %q", tc.goos, tc.goarch, got, tc.want)
+		}
+	}
+}
+
 func TestProxiedURL(t *testing.T) {
 	const raw = "https://github.com/hosea3000/workbuddy-checkin/releases/download/v1/workbuddy-checkin.exe"
 	cases := []struct {

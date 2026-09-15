@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -26,6 +27,15 @@ var updateAPIBaseURL = "https://api.github.com"
 
 // 待更新的可执行文件资产名（与 CI 发布的产物名一致）。
 const updateAssetName = "workbuddy-checkin.exe"
+
+// updateAssetNameFor 按平台选择更新资产名：Windows 为 exe，macOS 按架构选择 dmg。
+// 命名须与 CI 发布的产物名严格一致，否则更新会静默失效（由单元测试锁死）。
+func updateAssetNameFor(goos, goarch string) string {
+	if goos == "darwin" {
+		return "WorkBuddy-checkin-" + goarch + ".dmg"
+	}
+	return updateAssetName
+}
 
 // githubAsset 是 GitHub release 资产条目的最小子集。
 type githubAsset struct {
@@ -172,7 +182,7 @@ func fetchLatestRelease(client *http.Client, currentVersion, baseURL string) mod
 		result.Message = "检查更新失败：响应解析异常"
 		return result
 	}
-	result.DownloadURL = findAssetDownloadURL(release.Assets, updateAssetName)
+	result.DownloadURL = findAssetDownloadURL(release.Assets, updateAssetNameFor(runtime.GOOS, runtime.GOARCH))
 	latest := strings.TrimPrefix(strings.TrimSpace(release.TagName), "v")
 	if isUpToDate(currentVersion, latest) {
 		result.Status = model.UpdateStatusUpToDate
