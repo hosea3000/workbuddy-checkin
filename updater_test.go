@@ -50,7 +50,7 @@ func TestCheckForUpdatesUpdateAvailable(t *testing.T) {
 	}))
 	defer server.Close()
 
-	result := checkForUpdates(server.Client(), "0.1.1", server.URL, "")
+	result := checkForUpdates(server.Client(), "0.1.1", server.URL, "", "windows", "amd64")
 	if result.Status != model.UpdateStatusAvailable {
 		t.Fatalf("status = %q, want update-available", result.Status)
 	}
@@ -72,12 +72,37 @@ func TestCheckForUpdatesMultiAssetsMatchExe(t *testing.T) {
 	}))
 	defer server.Close()
 
-	result := checkForUpdates(server.Client(), "0.1.9", server.URL, "")
+	result := checkForUpdates(server.Client(), "0.1.9", server.URL, "", "windows", "amd64")
 	if result.Status != model.UpdateStatusAvailable {
 		t.Fatalf("status = %q, want update-available", result.Status)
 	}
 	if result.DownloadURL != "https://example.com/downloads/workbuddy-checkin.exe" {
 		t.Fatalf("download URL = %q, want workbuddy-checkin.exe asset URL", result.DownloadURL)
+	}
+}
+
+func TestCheckForUpdatesMatchesDarwinDmgByArch(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"tag_name":"v0.2.0","html_url":"https://example.com/r","assets":[` +
+			`{"name":"workbuddy-checkin.exe","browser_download_url":"https://example.com/downloads/win.exe"},` +
+			`{"name":"WorkBuddy-checkin-amd64.dmg","browser_download_url":"https://example.com/downloads/amd64.dmg"},` +
+			`{"name":"WorkBuddy-checkin-arm64.dmg","browser_download_url":"https://example.com/downloads/arm64.dmg"}]}`))
+	}))
+	defer server.Close()
+
+	cases := []struct {
+		arch string
+		want string
+	}{
+		{"arm64", "https://example.com/downloads/arm64.dmg"},
+		{"amd64", "https://example.com/downloads/amd64.dmg"},
+	}
+	for _, tc := range cases {
+		result := checkForUpdates(server.Client(), "0.1.9", server.URL, "", "darwin", tc.arch)
+		if result.DownloadURL != tc.want {
+			t.Fatalf("darwin/%s download URL = %q, want %q", tc.arch, result.DownloadURL, tc.want)
+		}
 	}
 }
 
@@ -88,7 +113,7 @@ func TestCheckForUpdatesAssetMissing(t *testing.T) {
 	}))
 	defer server.Close()
 
-	result := checkForUpdates(server.Client(), "0.2.0", server.URL, "")
+	result := checkForUpdates(server.Client(), "0.2.0", server.URL, "", "windows", "amd64")
 	if result.Status != model.UpdateStatusAvailable {
 		t.Fatalf("status = %q, want update-available", result.Status)
 	}
@@ -106,6 +131,24 @@ func TestFindAssetDownloadURL(t *testing.T) {
 	}
 	if got := findAssetDownloadURL([]githubAsset{{Name: updateAssetName, BrowserDownloadURL: "u2"}}, updateAssetName); got != "u2" {
 		t.Fatalf("exact match = %q, want u2", got)
+	}
+}
+
+func TestUpdateAssetNameFor(t *testing.T) {
+	cases := []struct {
+		goos   string
+		goarch string
+		want   string
+	}{
+		{"windows", "amd64", "workbuddy-checkin.exe"},
+		{"darwin", "amd64", "WorkBuddy-checkin-amd64.dmg"},
+		{"darwin", "arm64", "WorkBuddy-checkin-arm64.dmg"},
+		{"linux", "amd64", "workbuddy-checkin.exe"},
+	}
+	for _, tc := range cases {
+		if got := updateAssetNameFor(tc.goos, tc.goarch); got != tc.want {
+			t.Fatalf("updateAssetNameFor(%q, %q) = %q, want %q", tc.goos, tc.goarch, got, tc.want)
+		}
 	}
 }
 
@@ -143,7 +186,7 @@ func TestCheckForUpdatesProxyFallbackToDirect(t *testing.T) {
 	}))
 	defer direct.Close()
 
-	result := checkForUpdates(direct.Client(), "0.1.0", direct.URL, proxy.URL)
+	result := checkForUpdates(direct.Client(), "0.1.0", direct.URL, proxy.URL, "windows", "amd64")
 	if result.Status != model.UpdateStatusAvailable {
 		t.Fatalf("代理 403 时应回退直连，status = %q, want update-available", result.Status)
 	}
@@ -163,7 +206,7 @@ func TestCheckForUpdatesProxySuccess(t *testing.T) {
 	}))
 	direct.Close()
 
-	result := checkForUpdates(proxy.Client(), "0.1.0", "https://api.github.com", proxy.URL)
+	result := checkForUpdates(proxy.Client(), "0.1.0", "https://api.github.com", proxy.URL, "windows", "amd64")
 	if result.Status != model.UpdateStatusAvailable {
 		t.Fatalf("status = %q, want update-available", result.Status)
 	}
@@ -176,7 +219,7 @@ func TestCheckForUpdatesUpToDate(t *testing.T) {
 	}))
 	defer server.Close()
 
-	result := checkForUpdates(server.Client(), "0.1.1", server.URL, "")
+	result := checkForUpdates(server.Client(), "0.1.1", server.URL, "", "windows", "amd64")
 	if result.Status != model.UpdateStatusUpToDate {
 		t.Fatalf("status = %q, want up-to-date", result.Status)
 	}
@@ -191,7 +234,7 @@ func TestCheckForUpdatesReleaseNotFound(t *testing.T) {
 	}))
 	defer server.Close()
 
-	result := checkForUpdates(server.Client(), "0.1.1", server.URL, "")
+	result := checkForUpdates(server.Client(), "0.1.1", server.URL, "", "windows", "amd64")
 	if result.Status != model.UpdateStatusError {
 		t.Fatalf("status = %q, want error", result.Status)
 	}
@@ -207,7 +250,7 @@ func TestCheckForUpdatesNetworkError(t *testing.T) {
 	server.Close()
 
 	// 使用已关闭 server 的地址构造必然失败的请求
-	result := checkForUpdates(&http.Client{Timeout: time.Second}, "0.1.1", server.URL, "")
+	result := checkForUpdates(&http.Client{Timeout: time.Second}, "0.1.1", server.URL, "", "windows", "amd64")
 	if result.Status != model.UpdateStatusError {
 		t.Fatalf("status = %q, want error", result.Status)
 	}

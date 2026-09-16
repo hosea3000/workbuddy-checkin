@@ -135,6 +135,9 @@ var (
 	trayWndProc  = syscall.NewCallback(trayWndProcFn)
 )
 
+// setActivationPolicyAccessory 仅在 macOS 有意义，Windows 为空操作。
+func setActivationPolicyAccessory() {}
+
 func newTray(onOpen, onQuit, onWake func()) *Tray {
 	return &Tray{onOpen: onOpen, onQuit: onQuit, onWake: onWake}
 }
