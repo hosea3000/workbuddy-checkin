@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { RefreshCw, Trash2 } from '@lucide/vue'
+import { RefreshCw, Trash2, Check, Pin, CalendarCheck, Loader2 } from '@lucide/vue'
 import StatusBadge from './StatusBadge.vue'
 import type { AccountView } from '../api/bindings'
 
@@ -9,6 +9,7 @@ const emit = defineEmits<{
   checkin: [id: string]
   refreshQuota: [id: string]
   remove: [id: string]
+  setActive: [id: string]
 }>()
 
 const title = computed(() => props.account.nickname || props.account.id.slice(0, 12))
@@ -35,9 +36,11 @@ const todayText = computed(() => {
   return '今天还未签到，到点自动执行'
 })
 
-const balance = computed(() => (props.account.creditBalance == null ? '—' : format(props.account.creditBalance)))
+const balance = computed(() =>
+  props.account.creditBalance == null ? '—' : `${format(props.account.creditBalance)} 积分`,
+)
 const balanceSub = computed(() =>
-  props.account.creditBalanceAt ? `积分余额 · ${timeOf(props.account.creditBalanceAt)}` : '积分余额',
+  props.account.creditBalanceAt ? `${timeOf(props.account.creditBalanceAt)} 刷新` : '',
 )
 
 function format(n: number) {
@@ -69,6 +72,13 @@ function del() {
       <div class="flex items-center gap-2">
         <span class="font-medium text-sm truncate">{{ title }}</span>
         <StatusBadge :status="account.status" :checked-in="account.today.checkedIn" :checking="checking" />
+        <span
+          v-if="account.isActive"
+          class="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 text-[10px] font-medium"
+          title="模型代理使用该凭证"
+        >
+          <Check class="w-3 h-3" /> 当前凭证
+        </span>
       </div>
       <div class="text-xs text-slate-500 mt-0.5 truncate">{{ subtitle }}</div>
       <div
@@ -78,29 +88,38 @@ function del() {
         {{ todayText }}
       </div>
     </div>
-    <button class="shrink-0 group text-right mr-1 cursor-pointer" title="点击刷新余额" @click="emit('refreshQuota', account.id)">
-      <div class="text-sm font-semibold tabular-nums flex items-center justify-end gap-1">
-        {{ balance }}
-        <RefreshCw class="w-3 h-3 text-slate-300 group-hover:text-indigo-500" />
-      </div>
+    <div class="shrink-0 group text-right mr-1">
+      <div class="text-sm font-semibold tabular-nums">{{ balance }}</div>
       <div class="text-[10px] text-slate-400">{{ balanceSub }}</div>
+    </div>
+    <button
+      class="shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+      title="刷新余额"
+      @click="emit('refreshQuota', account.id)"
+    >
+      <RefreshCw class="w-4 h-4" />
     </button>
     <button
-      v-if="account.status !== 'relogin_required'"
-      class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm cursor-pointer disabled:opacity-50"
+      class="shrink-0 p-1.5 rounded-lg cursor-pointer"
+      :class="
+        account.isActive
+          ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/20'
+          : 'text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+      "
+      title="设为当前凭证"
+      @click="emit('setActive', account.id)"
+    >
+      <Pin class="w-4 h-4" />
+    </button>
+    <button
+      class="shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer disabled:opacity-50"
+      :title="checking ? '签到中…' : '立即签到'"
       :disabled="checking"
       @click="emit('checkin', account.id)"
     >
-      {{ checking ? '签到中…' : '立即签到' }}
+      <Loader2 v-if="checking" class="w-4 h-4 animate-spin" />
+      <CalendarCheck v-else class="w-4 h-4" />
     </button>
-    <template v-else>
-      <button
-        class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400 hover:bg-rose-100 text-sm font-medium cursor-pointer"
-        @click="emit('checkin', account.id)"
-      >
-        重新登录
-      </button>
-    </template>
     <button class="shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer" title="删除" @click="del">
       <Trash2 class="w-4 h-4" />
     </button>

@@ -141,3 +141,57 @@ func (c *Client) Checkin(ctx context.Context, cred CredentialSnapshot) (bool, *i
 	}
 	return success, code, msg, credit, nil
 }
+
+// FetchModels 拉取上游可用模型：GET /v3/config。
+func (c *Client) FetchModels(ctx context.Context, cred CredentialSnapshot) ([]string, error) {
+	headers, err := GenerateIDEConfigHeaders(cred, c.CLIVersion)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.doJSON(ctx, http.MethodGet, c.Endpoint+"/v3/config", headers, nil, 30*time.Second)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, handleNon200(resp)
+	}
+	var body struct {
+		Code *int `json:"code"`
+		Data *struct {
+			Models []any `json:"models"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return nil, &UpstreamError{StatusCode: 502, ErrType: ErrCategoryInvalidResp, Message: "config response invalid json"}
+	}
+	if body.Code == nil || *body.Code != 0 || body.Data == nil {
+		return nil, &UpstreamError{StatusCode: 502, ErrType: ErrCategoryInvalidResp, Message: "config response invalid payload"}
+	}
+	return ExtractModelIDs(body.Data.Models), nil
+}
+
+// ExtractModelIDs 从 /v3/config data.models 提取字符串模型 ID（容忍对象或字符串形态）。
+func ExtractModelIDs(raw []any) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, item := range raw {
+		var id string
+		switch t := item.(type) {
+		case string:
+			id = t
+		case map[string]any:
+			if s, ok := t["id"].(string); ok {
+				id = s
+			} else if s, ok := t["model"].(string); ok {
+				id = s
+			}
+		}
+		if id == "" || seen[id] {
+			continue
+		}
+		seen[id] = true
+		out = append(out, id)
+	}
+	return out
+}

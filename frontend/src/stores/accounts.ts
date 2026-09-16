@@ -48,6 +48,7 @@ export const useAccountsStore = defineStore('accounts', {
       const toast = useToast()
       try {
         await api.refreshQuota(id)
+        toast.push('余额已刷新', 'success')
       } catch (e) {
         toast.push(String(e), 'error')
       } finally {
@@ -57,6 +58,17 @@ export const useAccountsStore = defineStore('accounts', {
     async remove(id: string) {
       await api.deleteAccount(id)
       await this.refresh()
+    },
+    async setActive(id: string) {
+      const toast = useToast()
+      try {
+        await api.setActiveCredential(id)
+        toast.push('已设为当前凭证', 'success')
+      } catch (e) {
+        toast.push(String(e), 'error')
+      } finally {
+        await this.refresh()
+      }
     },
     startPolling() {
       this.stopPolling()

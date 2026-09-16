@@ -1,19 +1,20 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { FolderOpen, RefreshCw, LogOut, ArrowLeft, Download } from '@lucide/vue'
+import { FolderOpen, RefreshCw, Download } from '@lucide/vue'
 import { useSettingsStore } from '../stores/settings'
 import { useUpdateStore } from '../stores/update'
 import { useToast } from '../composables/toast'
 import { api, type Settings } from '../api/bindings'
 
-const router = useRouter()
 const store = useSettingsStore()
 const update = useUpdateStore()
 const toast = useToast()
 const form = reactive<Settings>({
   autoStart: false,
   updateProxy: '',
+  proxyEnabled: false,
+  proxyPort: 18080,
+  activeCredentialId: '',
 })
 const saving = ref(false)
 
@@ -27,7 +28,9 @@ onMounted(async () => {
 async function save() {
   saving.value = true
   try {
-    await store.save({ ...form })
+    // 整份覆盖写：先取全量，只改本页负责的字段，避免清掉模型代理页的设置
+    await store.load()
+    await store.save({ ...(store.settings as Settings), autoStart: form.autoStart, updateProxy: form.updateProxy })
     toast.push('设置已保存', 'success')
   } catch (e) {
     toast.push(String(e), 'error')
@@ -70,13 +73,10 @@ async function openDataDir() {
 
 <template>
   <section class="p-5 max-w-2xl mx-auto">
-    <div class="flex items-center gap-2 mb-1">
-      <button class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer" @click="router.push({ name: 'accounts' })">
-        <ArrowLeft class="w-4 h-4" />
-      </button>
+    <div class="mb-4">
       <h1 class="font-semibold">设置</h1>
+      <p class="text-xs text-slate-500 mt-0.5">所有数据仅保存在本机</p>
     </div>
-    <p class="text-xs text-slate-500 mb-4 ml-9">所有数据仅保存在本机</p>
 
     <div class="bg-white dark:bg-slate-900 rounded-xl ring-1 ring-slate-200 dark:ring-slate-800 p-0 divide-y divide-slate-100 dark:divide-slate-800">
       <label class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer">

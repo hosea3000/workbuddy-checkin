@@ -17,7 +17,7 @@ func TestAccountViewHidesToken(t *testing.T) {
 		AccessToken: token,
 		Status:      model.StatusActive,
 	}
-	view := account.ToView(cred, timeNow())
+	view := account.ToView(cred, timeNow(), "")
 
 	if view.TokenSuffix == token {
 		t.Fatal("view must not expose the full token")

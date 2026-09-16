@@ -10,7 +10,8 @@ import (
 )
 
 // ToView 将凭证映射为前端视图（令牌只暴露末 8 位）。
-func ToView(c model.Credential, now time.Time) model.AccountView {
+// activeID 为设置中的当前凭证 ID，用于标记模型代理正在使用的账号。
+func ToView(c model.Credential, now time.Time, activeID string) model.AccountView {
 	today := model.TodayView{
 		CheckedIn: c.HasCheckedInToday(now),
 		Message:   c.TodayMessage,
@@ -25,6 +26,7 @@ func ToView(c model.Credential, now time.Time) model.AccountView {
 		Status:             normalizeStatus(c.Status),
 		TokenSuffix:        model.TokenSuffix(c.AccessToken),
 		ExpiresAt:          c.ExpiresAt,
+		IsActive:           activeID != "" && c.ID == activeID,
 		Today:              today,
 		CreditBalance:      c.CreditBalance,
 		CreditBalanceTotal: c.CreditBalanceTotal,

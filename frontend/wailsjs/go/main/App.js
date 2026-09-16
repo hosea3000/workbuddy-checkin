@@ -66,12 +66,24 @@ export function PendingUpdateInfo() {
   return window['go']['main']['App']['PendingUpdateInfo']();
 }
 
+export function ProxyStatus() {
+  return window['go']['main']['App']['ProxyStatus']();
+}
+
 export function RefreshQuota(arg1) {
   return window['go']['main']['App']['RefreshQuota'](arg1);
 }
 
 export function SaveSettings(arg1) {
   return window['go']['main']['App']['SaveSettings'](arg1);
+}
+
+export function SetActiveCredential(arg1) {
+  return window['go']['main']['App']['SetActiveCredential'](arg1);
+}
+
+export function SetProxyEnabled(arg1) {
+  return window['go']['main']['App']['SetProxyEnabled'](arg1);
 }
 
 export function StartLogin() {
