@@ -93,7 +93,7 @@ func (s *Service) handleRefreshError(c model.Credential, err error) model.Creden
 	c.Status = model.StatusReloginRequired
 	_ = s.store.SaveCredential(c)
 	if !wasRelogin && s.notify != nil {
-		s.notify.Notify("workbuddy-checkin", "账号需重新登录："+displayName(c))
+		s.notify.Notify("WorkBuddy 自动签到", "账号需重新登录："+displayName(c))
 	}
 	return c
 }

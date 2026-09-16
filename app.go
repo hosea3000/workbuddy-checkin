@@ -127,7 +127,7 @@ func (a *App) notifyCloseTipOnce() {
 	a.closeTipShown = true
 	a.mu.Unlock()
 	if first && a.notifier != nil {
-		a.notifier.Notify("workbuddy-checkin", "已最小化到托盘，应用仍在后台运行")
+		a.notifier.Notify("WorkBuddy 自动签到", "已最小化到托盘，应用仍在后台运行")
 	}
 }
 
@@ -156,9 +156,9 @@ func (a *App) trayTip() string {
 		}
 	}
 	if relogin > 0 {
-		return "workbuddy-checkin — 有账号需重新登录"
+		return "WorkBuddy 自动签到 — 有账号需重新登录"
 	}
-	return fmt.Sprintf("workbuddy-checkin — 今日已签到 %d/%d", checked, len(creds))
+	return fmt.Sprintf("WorkBuddy 自动签到 — 今日已签到 %d/%d", checked, len(creds))
 }
 
 func (a *App) refreshTrayTip() {
