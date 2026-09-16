@@ -1,22 +1,35 @@
 # workbuddy-checkin 产品需求文档（PRD）
 
-> 一个 Windows 桌面小工具：管理 CodeBuddy（腾讯，`copilot.tencent.com`）账号并自动完成每日签到。
+> 一个桌面小工具（Windows / macOS）：管理 CodeBuddy（腾讯，`copilot.tencent.com`）账号并自动完成每日签到。
 > 目标仓库：`github.com/hosea3000/workbuddy-checkin`（独立仓库，不与 work2api 互通）。
 
 ## 1. 背景与目标
 
 CodeBuddy 每天签到可获得积分（额度）。现有做法是部署一个网关（work2api）跑定时签到，对只需要「签到」的用户过重：要服务器、要配数据库、要开端口。
 
-本产品把「登录 CodeBuddy 账号」+「每日签到」两件事做成一个 Windows 桌面应用，提供两种形态：
+本产品把「登录 CodeBuddy 账号」+「每日签到」两件事做成一个桌面应用。
+
+Windows 提供两种形态：
 
 - **安装版**：中文安装向导（per-user，装到 `%LOCALAPPDATA%`，无需管理员），自动创建快捷方式与卸载项，支持应用内一键检查更新
 - **绿色版**：单文件 exe，免安装，双击即用
 
+macOS 提供未签名 dmg（arm64 / amd64 各一个），拖入「应用程序」安装。
+
 共同能力：
 
-- 常驻系统托盘，到点自动签到，电脑没开时开机补签
+- 到点自动签到，电脑没开时开机补签
 - 图形界面管理账号（OAuth 登录、查看今日签到结果）
-- 数据只存本机（`%APPDATA%\workbuddy-checkin`）
+- 数据只存本机（Windows `%APPDATA%\workbuddy-checkin`；macOS `~/Library/Application Support/workbuddy-checkin`）
+
+平台差异：
+
+| | Windows | macOS |
+|---|---|---|
+| 常驻方式 | 系统托盘，关闭窗口隐藏到托盘 | 菜单栏图标，关闭窗口隐藏到菜单栏 |
+| 开机自启 | HKCU Run 注册表 | LaunchAgent（`~/Library/LaunchAgents`） |
+| 静默启动唤起 | 双击 exe / 托盘双击 | 再次双击 `.app`（单实例锁唤起） |
+| 应用内更新 | 下载 exe 自替换重启 | 下载 dmg 后挂载，用户拖入 Applications |
 
 ### 成功标准
 
@@ -112,11 +125,13 @@ CodeBuddy 每天签到可获得积分（额度）。现有做法是部署一个�
 
 | 设置项 | 默认 | 说明 |
 |---|---|---|
-| 开机自启 | 首次向导询问（默认勾选） | HKCU Run，无需管理员 |
+| 开机自启 | 首次向导询问（默认勾选） | Windows HKCU Run / macOS LaunchAgent，均无需管理员 |
 | GitHub 加速代理 | 空（直连） | 更新检查与下载的加速前缀，可留空；预置 gh-proxy.com / ghfast.top / gh.llkk.cc |
-| 打开数据目录 | 按钮 | 资源管理器打开 `%APPDATA%\workbuddy-checkin` |
+| 打开数据目录 | 按钮 | Windows 资源管理器 / macOS Finder 打开数据目录 |
 
 ### F8 托盘与系统集成
+
+Windows：
 
 - 托盘菜单：打开主界面 / 退出
 - 托盘 tooltip：`workbuddy-checkin — 今日已签到 2/2` 或 `— 有账号需重新登录`
@@ -126,12 +141,22 @@ CodeBuddy 每天签到可获得积分（额度）。现有做法是部署一个�
 - 开机自启时静默启动（不弹窗），直接进托盘
 - 开机自启写入 HKCU；安装版通过控制面板卸载，绿色版删 exe + 关闭自启开关
 
+macOS：
+
+- 菜单栏图标：打开 / 退出；左键单击图标即弹出菜单
+- 关闭主窗口 → 隐藏窗口到菜单栏（不退出）；**退出只能从菜单栏菜单或 ⌘Q 触发，且必须真正结束进程**
+- 应用不显示 Dock 图标（`LSUIElement` + `Accessory` 激活策略），形态为纯菜单栏常驻应用
+- 开机自启写入 LaunchAgent；自启时以 `--hidden` 静默启动
+- 静默启动后用户再次双击 `.app`，经单实例锁唤起已有窗口
+- 无电源/会话唤醒钩子，补签依赖每小时巡检兜底（Windows 有唤醒钩子，可即时补签）
+
 ### F9 更新
 
 - 启动时自动检查 GitHub Release 最新版本，设置页也可手动检查
 - 发现新版本时顶栏显示「发现新版本 vX.Y.Z」
-- 点击 → 下载新版 exe → 一键替换重启（复用 health-tool 的 updater 方案）
-- 更新下载到 exe 同目录，退出后覆盖自身并重启；目录不可写时提示前往 GitHub 手动更新
+- Windows：点击 → 下载新版 exe → 一键替换重启（复用 health-tool 的 updater 方案）；更新下载到 exe 同目录，退出后覆盖自身并重启，目录不可写时提示前往 GitHub 手动更新
+- macOS：点击 → 下载对应架构的 dmg 到 `~/Downloads/` → 打开挂载，用户拖入「应用程序」完成安装（不做原地替换）
+- 资产名按平台选择：Windows `workbuddy-checkin.exe`；macOS `WorkBuddy-checkin-<arch>.dmg`
 
 ### F10 首次运行引导
 
@@ -145,12 +170,12 @@ CodeBuddy 每天签到可获得积分（额度）。现有做法是部署一个�
 
 | 类别 | 要求 |
 |---|---|
-| 平台 | Windows 10 1809+ / Windows 11，x64（不做 arm64） |
-| 形态 | 安装版（per-user，装到 `%LOCALAPPDATA%\Programs\`，无需管理员）+ 绿色版单文件 exe |
-| 体积 | 绿色版 ≤ 15 MB；安装器 ≤ 25 MB |
+| 平台 | Windows 10 1809+ / Windows 11（x64）；macOS 10.13+（arm64 与 amd64） |
+| 形态 | Windows：安装版（per-user，装到 `%LOCALAPPDATA%\Programs\`，无需管理员）+ 绿色版单文件 exe；macOS：未签名 dmg（两个架构各一） |
+| 体积 | Windows 绿色版 ≤ 15 MB；安装器 ≤ 25 MB；macOS dmg ≤ 30 MB |
 | 启动 | 冷启动 ≤ 2 秒（自启静默启动 ≤ 1 秒进托盘） |
 | 内存 | 常驻 ≤ 80 MB |
-| 数据 | 全部在 `%APPDATA%\workbuddy-checkin\`，不上传任何第三方 |
+| 数据 | Windows `%APPDATA%\workbuddy-checkin\`；macOS `~/Library/Application Support/workbuddy-checkin/`，不上传任何第三方 |
 | 网络 | 仅访问 `copilot.tencent.com` 与 GitHub（更新检查/下载，可关） |
 | 隐私 | 令牌仅本地明文存储（0600 权限）；日志/通知/界面不出现令牌 |
 | 时区 | 签到日期与时间一律取本机本地时区 |
@@ -164,8 +189,10 @@ CodeBuddy 每天签到可获得积分（额度）。现有做法是部署一个�
 - 多用户 / 团队 / 云端同步 / 账号共享
 - 国际版 `www.workbuddy.ai` 账号（无签到体系）
 - 自动更新（已实现，见 F9）
-- macOS / Linux 发行版（仅保留 Linux 下可开发的 stub）
-- 代码签名、MSI / 企业批量部署
+- Linux 发行版（仅保留 Linux 下可开发的 stub）
+- macOS 代码签名与公证、universal 单包（改为两个架构 dmg）
+- macOS 原地替换 `.app` 式自更新、睡眠唤醒即时补签钩子
+- MSI / 企业批量部署
 
 ## 7. 风险与对策
 
@@ -192,6 +219,13 @@ CodeBuddy 每天签到可获得积分（额度）。现有做法是部署一个�
 10. 卡片显示积分余额；签到成功后余额随之更新；点卡片刷新按钮立即更新；断网时余额请求失败但签到结果正常
 11. 普通用户（非管理员）运行安装器 → 无 UAC → 中文向导 → 桌面/开始菜单快捷方式与卸载项生成 → 控制面板可卸载
 12. 安装版发现新版本 → 设置页「立即更新」→ 下载进度 → 确认重启 → 版本号变为新版本；绿色版同流程（目录可写时）
+
+macOS 额外验收：
+
+13. 启动后 Dock 无图标、菜单栏出现图标；左键单击图标弹出「打开 / 退出」菜单
+14. 关闭主窗口 → 应用不退出、图标仍在、调度继续；菜单「打开」重新显示窗口并获得焦点
+15. 菜单「退出」与 ⌘Q → 进程结束、图标消失
+16. 切换深浅色外观 → 菜单栏图标自动适配、清晰可辨
 
 ## 9. 里程碑
 

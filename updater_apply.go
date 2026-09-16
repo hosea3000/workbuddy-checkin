@@ -30,6 +30,24 @@ func exeUpdatePaths(exePath string) (partPath, newPath, versionPath, batPath str
 		filepath.Join(dir, updateBatName)
 }
 
+// updateDownloadDir 返回下载落位目录：Windows 为 exe 同目录（便于自替换），
+// macOS 为 ~/Downloads（.app 内不可写，且 dmg 由用户拖入安装）。
+func updateDownloadDir(exePath string) string {
+	if isMac() {
+		if home, err := os.UserHomeDir(); err == nil {
+			return filepath.Join(home, "Downloads")
+		}
+	}
+	return filepath.Dir(exePath)
+}
+
+// downloadPaths 计算下载中/落位文件的路径（不含 Windows 专属的版本标记与 bat）。
+func downloadPaths(exePath, assetName string) (partPath, newPath string) {
+	dir := updateDownloadDir(exePath)
+	return filepath.Join(dir, assetName+updatePartSuffix),
+		filepath.Join(dir, assetName)
+}
+
 // dirWritable 探测目录可写性：尝试创建并删除临时文件，失败返回 false。
 func dirWritable(dir string) bool {
 	f, err := os.CreateTemp(dir, ".workbuddy-checkin-write-probe-*")

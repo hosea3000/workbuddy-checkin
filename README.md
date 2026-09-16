@@ -1,11 +1,17 @@
 # workbuddy-checkin
 
-一个 Windows 桌面小工具：管理 CodeBuddy（腾讯，`copilot.tencent.com`）账号并**自动完成每日签到**，常驻系统托盘，电脑没开时开机自动补签。
+一个桌面小工具：管理 CodeBuddy（腾讯，`copilot.tencent.com`）账号并**自动完成每日签到**，电脑没开时开机自动补签。
 
-无需服务器、无需数据库、无需开端口——数据只存在本机。提供两种形态：
+无需服务器、无需数据库、无需开端口——数据只存在本机。
 
-- **安装版**：中文安装向导（per-user，无需管理员），自动创建快捷方式与卸载项，支持应用内一键检查更新
-- **绿色版**：单文件 exe，免安装，双击即用
+支持 Windows 与 macOS，两平台行为略有差异：
+
+| | Windows | macOS |
+|---|---|---|
+| 形态 | 中文安装向导（per-user，无需管理员）/ 绿色版单文件 exe | 未签名 `.dmg`（arm64 / amd64）|
+| 常驻方式 | 系统托盘，关闭窗口最小化到托盘 | 无托盘，关闭窗口即退出应用 |
+| 开机自启 | HKCU Run 注册表 | LaunchAgent |
+| 应用内更新 | 下载 exe 自替换重启 | 下载 dmg 后挂载，拖入 Applications |
 
 ## 功能特性
 
@@ -26,19 +32,29 @@
 
 | 文件 | 说明 |
 |---|---|
-| `workbuddy-checkin-amd64-installer.exe` | 安装版，中文向导，无需管理员权限 |
-| `workbuddy-checkin.exe` | 绿色版单文件，双击即用 |
+| `workbuddy-checkin-amd64-installer.exe` | Windows 安装版，中文向导，无需管理员权限 |
+| `workbuddy-checkin.exe` | Windows 绿色版单文件，双击即用 |
+| `WorkBuddy-checkin-arm64.dmg` | macOS，Apple Silicon（M1/M2/M3/M4） |
+| `WorkBuddy-checkin-amd64.dmg` | macOS，Intel 芯片 |
 
-系统要求：Windows 10 1809+ / Windows 11，x64。
+系统要求：Windows 10 1809+ / Windows 11（x64）；macOS 10.13+。
+
+**macOS 用户注意**：应用未签名、未公证，首次打开可能被 Gatekeeper 拦截。若提示「无法验证开发者」，在终端执行一次去隔离即可：
+
+```bash
+xattr -cr "/Applications/WorkBuddy 自动签到.app"
+```
+
+也可在「系统设置 → 隐私与安全性」中点「仍要打开」。安装方式：打开 dmg，把应用拖入「应用程序」。不确定芯片型号时，「关于本机」中查看处理器。
 
 ## 使用
 
 1. 启动应用，点击「添加账号」→ 自动打开浏览器完成 CodeBuddy 登录 → 卡片出现新账号
-2. 关闭主窗口即最小化到托盘，应用仍在后台调度签到
+2. 关闭主窗口即最小化到托盘（Windows）/ 直接退出应用（macOS），Windows 下应用仍在后台调度签到
 3. 签到结果通过系统通知告知；打开主界面可查看每个账号的今日状态与积分余额
-4. 如需退出，右键托盘图标选择「退出」（关闭窗口不会退出应用）
+4. Windows 如需退出，右键托盘图标选择「退出」（关闭窗口不会退出应用）；macOS 直接关闭窗口即退出
 
-数据目录：`%APPDATA%\workbuddy-checkin\`，可在设置页点「打开数据目录」直达。
+数据目录：Windows 为 `%APPDATA%\workbuddy-checkin\`，macOS 为 `~/Library/Application Support/workbuddy-checkin/`，可在设置页点「打开数据目录」直达。
 
 ## 隐私与安全
 
@@ -49,7 +65,7 @@
 
 ## 从源码构建
 
-前置：Go 1.26、Node.js 22、[Wails CLI v2](https://wails.io/)（构建安装器还需 NSIS）。
+前置：Go 1.26、Node.js 22、[Wails CLI v2](https://wails.io/)（构建 Windows 安装器还需 NSIS；macOS 构建需在 macOS 上进行）。
 
 ```bash
 # 1. 先构建前端：main.go 用 //go:embed all:frontend/dist，dist 被 gitignore，
@@ -63,11 +79,18 @@ go vet ./... && go test ./...
 wails build -platform windows/amd64          # 绿色版 exe
 wails build -nsis -installscope user -platform windows/amd64  # 安装版
 
+# 4. 构建 macOS 产物（须在 macOS 上执行）
+wails build -platform darwin/arm64           # Apple Silicon
+wails build -platform darwin/amd64           # Intel
+# 打包为 dmg（macOS 自带 hdiutil）
+hdiutil create -volname "WorkBuddy 自动签到" -srcfolder build/bin/workbuddy-checkin.app \
+  -ov -format UDZO build/bin/WorkBuddy-checkin-arm64.dmg
+
 # 开发模式（热重载）
 wails dev
 ```
 
-发布：推送 `v*` tag，`.github/workflows/release.yml` 会自动构建 Windows exe 与 NSIS 安装器并创建 Release。
+发布：推送 `v*` tag，`.github/workflows/release.yml` 会构建 Windows exe、NSIS 安装器与 macOS 两个架构的 dmg 并创建 Release。
 
 ## 免责声明
 
