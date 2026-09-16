@@ -191,6 +191,6 @@ func fetchLatestRelease(client *http.Client, currentVersion, baseURL, goos, goar
 	result.Status = model.UpdateStatusAvailable
 	result.LatestVersion = latest
 	result.ReleaseURL = release.HTMLURL
-	result.Message = "发现新版本"
+	result.Message = "发现新版本 v" + latest
 	return result
 }
