@@ -11,6 +11,7 @@ import (
 
 	"github.com/hosea3000/workbuddy-checkin/internal/account"
 	"github.com/hosea3000/workbuddy-checkin/internal/checkin"
+	"github.com/hosea3000/workbuddy-checkin/internal/proxy"
 	"github.com/hosea3000/workbuddy-checkin/internal/scheduler"
 	"github.com/hosea3000/workbuddy-checkin/model"
 	"github.com/hosea3000/workbuddy-checkin/store"
@@ -32,6 +33,7 @@ type App struct {
 	accounts  *account.Service
 	checkin   *checkin.Service
 	scheduler *scheduler.Scheduler
+	proxy     *proxy.Service
 	tray      *Tray
 	notifier  Notifier
 
@@ -67,7 +69,8 @@ func NewApp() *App {
 	})
 	a.checkin = checkin.NewService(st, client, a.notifier)
 	a.scheduler = scheduler.New(st, a.checkin)
-	a.tray = newTray(a.showWindow, a.quit, a.wake)
+	a.proxy = proxy.NewService(client, proxy.NewCredentialResolver(st, a.checkin), a.checkin)
+	a.tray = newTray(a.showWindow, a.quit, a.wake, a.toggleProxyFromTray)
 	return a
 }
 
@@ -78,12 +81,14 @@ func (a *App) startup(ctx context.Context) {
 		cleanupUpdateArtifacts(exePath)
 	}
 	a.scheduler.Start(ctx)
+	a.startProxyIfEnabled()
 	// 窗口可见性由 main.go 的 StartHidden（--hidden 标记）决定，此处不再补 show。
 	// macOS 兜底切到 Accessory：Wails 在 applicationWillFinishLaunching 写死 Regular，
 	// 会覆盖 Info.plist 的 LSUIElement，故此处再设一次以隐藏 Dock 图标。
 	setActivationPolicyAccessory()
 	a.tray.Start(a.trayTip())
 	a.tray.SetTip(a.trayTip())
+	a.tray.SetProxyState(a.store.GetSettings().ProxyEnabled)
 	// 启动即巡检（托盘就绪后）：当天未签到的账号立即补签
 	go func() {
 		time.Sleep(2 * time.Second)
@@ -97,6 +102,31 @@ func (a *App) shutdown(ctx context.Context) {
 	if a.scheduler != nil {
 		a.scheduler.Stop()
 	}
+	if a.proxy != nil {
+		a.proxy.Stop()
+	}
+}
+
+// toggleProxyFromTray 由托盘菜单项调用：翻转模型代理开关并同步菜单勾选状态。
+func (a *App) toggleProxyFromTray() {
+	settings := a.store.GetSettings()
+	if err := a.SetProxyEnabled(!settings.ProxyEnabled); err != nil {
+		log.Printf("[proxy] 托盘切换失败: %v", err)
+	}
+}
+
+// startProxyIfEnabled 按设置拉起模型代理服务；端口非法或绑定失败时仅记日志，
+// 实际状态由 ProxyStatus() 暴露给设置页。
+func (a *App) startProxyIfEnabled() {
+	settings := a.store.GetSettings()
+	if !settings.ProxyEnabled {
+		return
+	}
+	if err := a.proxy.Start(settings.ProxyPort); err != nil {
+		log.Printf("[proxy] 启动失败: %v", err)
+		return
+	}
+	log.Printf("[proxy] 已在 127.0.0.1:%d 监听", settings.ProxyPort)
 }
 
 // beforeClose 决定窗口关闭行为。两平台均为「隐藏窗口、应用继续后台运行」：

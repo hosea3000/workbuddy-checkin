@@ -47,11 +47,25 @@ func (a *App) OpenAuthURL(url string) error {
 func (a *App) ListAccounts() []model.AccountView {
 	creds := a.store.ListCredentials()
 	now := timeNow()
+	activeID := a.store.GetSettings().ActiveCredentialID
 	out := make([]model.AccountView, 0, len(creds))
 	for _, c := range creds {
-		out = append(out, account.ToView(c, now))
+		out = append(out, account.ToView(c, now, activeID))
 	}
 	return out
+}
+
+// SetActiveCredential 将指定账号设为模型代理使用的当前凭证（不调用上游）。
+func (a *App) SetActiveCredential(id string) error {
+	if _, ok := a.store.GetCredential(id); !ok {
+		return errors.New("账号不存在")
+	}
+	settings := a.store.GetSettings()
+	if settings.ActiveCredentialID == id {
+		return nil
+	}
+	settings.ActiveCredentialID = id
+	return a.store.SaveSettings(settings)
 }
 
 // CheckinSummary 返回今日签到聚合（托盘 tooltip / 顶栏计数）。
@@ -72,12 +86,32 @@ func (a *App) CheckinSummary() model.CheckinSummary {
 }
 
 // DeleteAccount 删除本地凭证（不调用上游）。
+// 删除的若是当前凭证，则顺位到列表首个 active 账号，无则置空。
 func (a *App) DeleteAccount(id string) error {
 	if err := a.store.DeleteCredential(id); err != nil {
 		return err
 	}
+	a.reassignActiveCredential(id)
 	a.refreshTrayTip()
 	return nil
+}
+
+// reassignActiveCredential 在删除的是当前凭证时重新指定当前凭证。
+func (a *App) reassignActiveCredential(deletedID string) {
+	settings := a.store.GetSettings()
+	if settings.ActiveCredentialID != deletedID {
+		return
+	}
+	settings.ActiveCredentialID = ""
+	for _, c := range a.store.ListCredentials() {
+		if c.Status == model.StatusActive {
+			settings.ActiveCredentialID = c.ID
+			break
+		}
+	}
+	if err := a.store.SaveSettings(settings); err != nil {
+		log.Printf("[account] 删除当前凭证后重新指定失败: %v", err)
+	}
 }
 
 // HasAccounts 返回是否已有账号（首启引导路由判定）。

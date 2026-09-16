@@ -8,6 +8,7 @@ type AccountView struct {
 	Status             string    `json:"status"`
 	TokenSuffix        string    `json:"tokenSuffix"`
 	ExpiresAt          int64     `json:"expiresAt"`
+	IsActive           bool      `json:"isActive"` // 是否为模型代理使用的当前凭证
 	Today              TodayView `json:"today"`
 	CreditBalance      *float64  `json:"creditBalance"`
 	CreditBalanceTotal *float64  `json:"creditBalanceTotal"`

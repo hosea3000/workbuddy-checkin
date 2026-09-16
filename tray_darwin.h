@@ -8,6 +8,9 @@ void woTrayStart(void *iconBytes, int length);
 // woTraySetTip 更新菜单栏 tooltip 文本。
 void woTraySetTip(const char *tip);
 
+// woTraySetProxyState 更新菜单中「模型代理」项的勾选状态（enabled 非 0 即勾选）。
+void woTraySetProxyState(int enabled);
+
 // woSetAccessoryPolicy 将应用激活策略设为 Accessory（不显示 Dock 图标）。
 void woSetAccessoryPolicy(void);
 

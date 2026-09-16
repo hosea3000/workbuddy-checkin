@@ -1,7 +1,7 @@
 // Wails 运行时绑定封装：统一错误 → 由调用方决定 toast。
 // 生成物：wailsjs/go/main/App.js + wailsjs/go/models.ts（wails generate module）。
 import * as App from '../../wailsjs/go/main/App'
-import type { model } from '../../wailsjs/go/models'
+import type { model, proxy } from '../../wailsjs/go/models'
 
 export type AccountView = model.AccountView
 export type CheckinResult = model.CheckinResult
@@ -13,6 +13,7 @@ export type QuotaView = model.QuotaView
 export type UpdateCheckResult = model.UpdateCheckResult
 export type UpdateDownloadEvent = model.UpdateDownloadEvent
 export type PendingUpdateInfo = model.PendingUpdateInfo
+export type ProxyStatus = proxy.Status
 
 export const api = {
   listAccounts: () => App.ListAccounts(),
@@ -25,8 +26,11 @@ export const api = {
   checkinAll: () => App.CheckinAll(),
   refreshQuota: (id: string) => App.RefreshQuota(id),
   deleteAccount: (id: string) => App.DeleteAccount(id),
+  setActiveCredential: (id: string) => App.SetActiveCredential(id),
   getSettings: () => App.GetSettings(),
   saveSettings: (s: Settings) => App.SaveSettings(s),
+  proxyStatus: () => App.ProxyStatus(),
+  setProxyEnabled: (enabled: boolean) => App.SetProxyEnabled(enabled),
   openDataDir: () => App.OpenDataDir(),
   hasAccounts: () => App.HasAccounts(),
   getVersion: () => App.GetVersion(),

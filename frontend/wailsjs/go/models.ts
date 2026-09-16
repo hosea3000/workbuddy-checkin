@@ -25,6 +25,7 @@ export namespace model {
 	    status: string;
 	    tokenSuffix: string;
 	    expiresAt: number;
+	    isActive: boolean;
 	    today: TodayView;
 	    creditBalance?: number;
 	    creditBalanceTotal?: number;
@@ -42,6 +43,7 @@ export namespace model {
 	        this.status = source["status"];
 	        this.tokenSuffix = source["tokenSuffix"];
 	        this.expiresAt = source["expiresAt"];
+	        this.isActive = source["isActive"];
 	        this.today = this.convertValues(source["today"], TodayView);
 	        this.creditBalance = source["creditBalance"];
 	        this.creditBalanceTotal = source["creditBalanceTotal"];
@@ -185,6 +187,9 @@ export namespace model {
 	export class Settings {
 	    autoStart: boolean;
 	    updateProxy: string;
+	    proxyEnabled: boolean;
+	    proxyPort: number;
+	    activeCredentialId: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -194,6 +199,9 @@ export namespace model {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.autoStart = source["autoStart"];
 	        this.updateProxy = source["updateProxy"];
+	        this.proxyEnabled = source["proxyEnabled"];
+	        this.proxyPort = source["proxyPort"];
+	        this.activeCredentialId = source["activeCredentialId"];
 	    }
 	}
 	
@@ -237,6 +245,27 @@ export namespace model {
 	        this.total = source["total"];
 	        this.percent = source["percent"];
 	        this.message = source["message"];
+	    }
+	}
+
+}
+
+export namespace proxy {
+	
+	export class Status {
+	    running: boolean;
+	    port: number;
+	    error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Status(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.running = source["running"];
+	        this.port = source["port"];
+	        this.error = source["error"];
 	    }
 	}
 
