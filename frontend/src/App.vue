@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Settings as SettingsIcon, CalendarCheck, Download, Plug } from '@lucide/vue'
+import { Settings as SettingsIcon, CalendarCheck, Download, Plug, ChevronLeft, ChevronRight } from '@lucide/vue'
 import ToastHost from './components/ui/ToastHost.vue'
 import { useAccountsStore } from './stores/accounts'
 import { useUpdateStore } from './stores/update'
@@ -17,6 +17,26 @@ const navItems = [
   { name: 'proxy', label: '模型代理', icon: Plug },
   { name: 'settings', label: '设置', icon: SettingsIcon },
 ] as const
+
+const SIDEBAR_KEY = 'sidebar-collapsed'
+const collapsed = ref(readCollapsed())
+
+function readCollapsed() {
+  try {
+    return localStorage.getItem(SIDEBAR_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function toggleSidebar() {
+  collapsed.value = !collapsed.value
+  try {
+    localStorage.setItem(SIDEBAR_KEY, collapsed.value ? '1' : '0')
+  } catch {
+    // 写入失败只是不记住，不影响本次切换
+  }
+}
 
 const summaryText = computed(() => {
   if (accounts.summary.reloginRequired > 0) return '有账号需重新登录'
@@ -67,23 +87,37 @@ onMounted(async () => {
       </header>
 
       <div class="flex-1 flex min-h-0">
-        <aside class="w-40 shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 p-2">
+        <aside
+          class="shrink-0 flex flex-col bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 p-2 transition-[width] duration-150"
+          :class="collapsed ? 'w-14' : 'w-40'"
+        >
           <nav class="space-y-1">
             <button
               v-for="item in navItems"
               :key="item.name"
               class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm cursor-pointer"
-              :class="
+              :class="[
+                collapsed ? 'justify-center' : '',
                 route.name === item.name
                   ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-medium'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-              "
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800',
+              ]"
+              :title="item.label"
               @click="router.push({ name: item.name })"
             >
               <component :is="item.icon" class="w-4 h-4 shrink-0" />
-              {{ item.label }}
+              <span v-if="!collapsed">{{ item.label }}</span>
             </button>
           </nav>
+
+          <button
+            class="mt-auto w-full flex items-center justify-center px-3 py-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+            :title="collapsed ? '展开侧栏' : '折叠侧栏'"
+            @click="toggleSidebar"
+          >
+            <ChevronRight v-if="collapsed" class="w-4 h-4 shrink-0" />
+            <ChevronLeft v-else class="w-4 h-4 shrink-0" />
+          </button>
         </aside>
 
         <main class="flex-1 overflow-y-auto">
