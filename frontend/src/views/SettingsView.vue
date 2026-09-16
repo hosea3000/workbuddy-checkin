@@ -18,6 +18,9 @@ const form = reactive<Settings>({
   proxyEnabled: false,
   proxyPort: 18080,
   activeCredentialId: '',
+  telemetryEnabled: true,
+  telemetryId: '',
+  telemetryLastAt: 0,
 })
 const saving = ref(false)
 
@@ -33,7 +36,7 @@ async function save() {
   try {
     // 整份覆盖写：先取全量，只改本页负责的字段，避免清掉模型代理页的设置
     await store.load()
-    await store.save({ ...(store.settings as Settings), autoStart: form.autoStart, updateProxy: form.updateProxy })
+    await store.save({ ...(store.settings as Settings), autoStart: form.autoStart, updateProxy: form.updateProxy, telemetryEnabled: form.telemetryEnabled })
     toast.push('设置已保存', 'success')
   } catch (e) {
     toast.push(String(e), 'error')
@@ -82,7 +85,7 @@ function openRepo() {
   <section class="p-5 max-w-2xl mx-auto">
     <div class="mb-4">
       <h1 class="font-semibold">设置</h1>
-      <p class="text-xs text-slate-500 mt-0.5">所有数据仅保存在本机</p>
+      <p class="text-xs text-slate-500 mt-0.5">账号与令牌仅保存在本机</p>
     </div>
 
     <div class="bg-white dark:bg-slate-900 rounded-xl ring-1 ring-slate-200 dark:ring-slate-800 p-0 divide-y divide-slate-100 dark:divide-slate-800">

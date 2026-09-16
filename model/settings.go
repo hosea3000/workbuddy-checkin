@@ -11,13 +11,19 @@ type Settings struct {
 	ProxyEnabled       bool   `json:"proxyEnabled"`       // 模型代理开关
 	ProxyPort          int    `json:"proxyPort"`          // 模型代理监听端口
 	ActiveCredentialID string `json:"activeCredentialId"` // 当前凭证 ID，空表示未设置
+
+	// 匿名使用数据上报：仅版本号/系统/架构/账号数量，不含任何账号或个人信息。
+	TelemetryEnabled bool   `json:"telemetryEnabled"` // 上报开关，默认开启
+	TelemetryID      string `json:"telemetryId"`      // 随机 UUID v4，Start 时无条件生成
+	TelemetryLastAt  int64  `json:"telemetryLastAt"`  // 上次成功上报的 Unix 秒
 }
 
 // DefaultSettings 返回设计文档约定的默认值（PRD F7）。
 func DefaultSettings() Settings {
 	return Settings{
-		AutoStart:    false,
-		ProxyPort:    DefaultProxyPort,
-		ProxyEnabled: false,
+		AutoStart:        false,
+		ProxyPort:        DefaultProxyPort,
+		ProxyEnabled:     false,
+		TelemetryEnabled: true,
 	}
 }

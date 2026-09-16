@@ -26,6 +26,11 @@ func (a *App) SaveSettings(s model.Settings) error {
 	if err := setAutoStart(s.AutoStart); err != nil {
 		return err
 	}
+	// 上报设备标识与上次上报时间由后端持有，不信任前端回传：始终保留现有值，
+	// 避免前端未回传（或旧版前端）时被清空。
+	existing := a.store.GetSettings()
+	s.TelemetryID = existing.TelemetryID
+	s.TelemetryLastAt = existing.TelemetryLastAt
 	if err := a.store.SaveSettings(s); err != nil {
 		return err
 	}

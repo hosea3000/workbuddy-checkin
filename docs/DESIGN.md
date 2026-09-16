@@ -73,7 +73,9 @@ workbuddy-checkin/
 ├── internal/
 │   ├── account/             # 账号服务：登录编排、续期、去重、状态机
 │   ├── checkin/             # 签到执行 + 调度 + 补签 + 重试 + 余额刷新
-│   └── scheduler/           # 定时器（下次触发点计算、跨天/唤醒触发）
+│   ├── proxy/               # 模型代理（OpenAI 兼容）
+│   ├── scheduler/           # 定时器（下次触发点计算、跨天/唤醒触发）
+│   └── telemetry/           # 匿名使用统计（每小时检查、24h 门槛、静默上报）
 ├── frontend/                # Vue3（Vite），wailsjs 绑定生成物
 ├── build/                   # 图标、windows 资源
 ├── .github/workflows/release.yml
@@ -263,8 +265,26 @@ performCheckin(cred):
 - 日志：只记 `user_id` 前 8 位、HTTP 状态、错误类别；**永不打印 token/refresh_token/完整响应体**
 - UI：令牌只显示末 8 位（`token_suffix`），无「查看明文」入口
 - 通知：只含账号昵称 + 结果，不含任何标识串
-- 网络：仅 `copilot.tencent.com`（HTTPS，证书校验走默认 `http.Transport`）+ `api.github.com`（仅更新检查，可关）
-- 不收集遥测、不写注册表（除 HKCU Run 自启）、不装服务
+- 网络：仅 `copilot.tencent.com`（HTTPS，证书校验走默认 `http.Transport`）+ `api.github.com`（仅更新检查，可关）+ 匿名上报端点（可关）
+- 匿名使用统计：`internal/telemetry` 每小时检查一次，距上次成功上报超过 24 小时才发起一次 `POST`。上报内容仅 `{id, v, os, arch, accounts}`——`id` 为随机 UUID v4（`crypto/rand`，不含时间/机器码/主机名），`accounts` 仅为账号数量。**绝不上报**令牌、令牌片段、邮箱、用户名、昵称、账号 UID、凭证 ID、企业 ID、域名、签到结果或积分。完整 `device_id` 永不写入日志（最多前 8 位）。默认开启，可在设置页关闭；关闭不影响已生成的 `TelemetryID`。
+- 不写注册表（除 HKCU Run 自启）、不装服务
+
+### 8.1 匿名上报服务端契约
+
+服务端为**独立项目**（不在本仓库）。客户端仅契约如下：
+
+```
+POST <pingURL>                     # pingURL 为 internal/telemetry 包级变量，硬编码国内地址
+Content-Type: application/json
+Body: {"id":"<uuid-v4>","v":"0.1.4","os":"windows","arch":"amd64","accounts":2}
+Response: HTTP 200，无响应体（客户端不读取）
+```
+
+- 客户端不做鉴权、不签名、不加固定请求头——客户端在攻击者手中，任何客户端可计算的凭据都能被复现，客户侧鉴权在原理上不成立且会制造错误的安全感
+- 防刷全部由服务端承担：按 IP 限速、新 `id` 突增检测与告警
+- 该数字定位为**量级参考而非精确审计**：少量伪造不影响判断，突增 10 倍视为被刷
+- 失败语义：非 200 或网络错误时不记录上报时间，下个小时检查会重试（语义上是「每小时重试直到成功」）
+
 
 ## 9. 前后端契约
 

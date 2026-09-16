@@ -3,15 +3,17 @@
 ## Purpose
 
 以本机 JSON 文件原子、自愈地持久化凭证与设置，串行化并发读写、处理跨天状态失效，并保证令牌仅以 0600 权限明文存储。
-
 ## Requirements
-
 ### Requirement: JSON 文件存储位置
-系统 SHALL 将数据存储在 `%APPDATA%\workbuddy-checkin\`（即 `os.UserConfigDir()/workbuddy-checkin/`），包含 `credentials.json`（`[]Credential`）、`settings.json`（`Settings`）、`app.log`。所有数据 SHALL 仅存本机，不上传任何第三方。
+系统 SHALL 将数据存储在 `%APPDATA%\workbuddy-checkin\`（即 `os.UserConfigDir()/workbuddy-checkin/`），包含 `credentials.json`（`[]Credential`）、`settings.json`（`Settings`）、`app.log`，以及日志轮转产生的历史文件（`app-<时间戳>.log[.gz]`，见 `logging` 能力）。所有数据 SHALL 仅存本机，不上传任何第三方。
 
 #### Scenario: 首次启动无文件
 - **WHEN** 数据目录或文件不存在
 - **THEN** 系统以空数据继续，不报错阻塞
+
+#### Scenario: 日志轮转产物同目录存放
+- **WHEN** `app.log` 达到 5 MB 触发轮转
+- **THEN** 历史文件以 `app-<时间戳>.log[.gz]` 命名存放于同一数据目录
 
 ### Requirement: 原子写
 系统 SHALL 通过「写临时文件 → fsync → rename」原子替换方式写入，文件权限 SHALL 为 0600。
@@ -62,3 +64,4 @@
 #### Scenario: 旧版本文件兼容
 - **WHEN** 读取由不含模型代理字段的旧版本写出的 `settings.json`
 - **THEN** 系统正常加载，模型代理开关为关闭、端口为默认值、当前凭证为空
+

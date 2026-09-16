@@ -13,6 +13,7 @@ import (
 	"github.com/hosea3000/workbuddy-checkin/internal/checkin"
 	"github.com/hosea3000/workbuddy-checkin/internal/proxy"
 	"github.com/hosea3000/workbuddy-checkin/internal/scheduler"
+	"github.com/hosea3000/workbuddy-checkin/internal/telemetry"
 	"github.com/hosea3000/workbuddy-checkin/model"
 	"github.com/hosea3000/workbuddy-checkin/store"
 	"github.com/hosea3000/workbuddy-checkin/upstream/codebuddy"
@@ -34,6 +35,7 @@ type App struct {
 	checkin   *checkin.Service
 	scheduler *scheduler.Scheduler
 	proxy     *proxy.Service
+	telemetry *telemetry.Service
 	tray      *Tray
 	notifier  Notifier
 
@@ -70,6 +72,7 @@ func NewApp() *App {
 	a.checkin = checkin.NewService(st, client, a.notifier)
 	a.scheduler = scheduler.New(st, a.checkin)
 	a.proxy = proxy.NewService(client, proxy.NewCredentialResolver(st, a.checkin), a.checkin)
+	a.telemetry = telemetry.NewService(st, version)
 	a.tray = newTray(a.showWindow, a.quit, a.wake, a.toggleProxyFromTray)
 	return a
 }
@@ -82,6 +85,7 @@ func (a *App) startup(ctx context.Context) {
 	}
 	a.scheduler.Start(ctx)
 	a.startProxyIfEnabled()
+	a.telemetry.Start(ctx)
 	// 窗口可见性由 main.go 的 StartHidden（--hidden 标记）决定，此处不再补 show。
 	// macOS 兜底切到 Accessory：Wails 在 applicationWillFinishLaunching 写死 Regular，
 	// 会覆盖 Info.plist 的 LSUIElement，故此处再设一次以隐藏 Dock 图标。
@@ -104,6 +108,9 @@ func (a *App) shutdown(ctx context.Context) {
 	}
 	if a.proxy != nil {
 		a.proxy.Stop()
+	}
+	if a.telemetry != nil {
+		a.telemetry.Stop()
 	}
 }
 

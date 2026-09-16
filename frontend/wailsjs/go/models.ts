@@ -190,6 +190,9 @@ export namespace model {
 	    proxyEnabled: boolean;
 	    proxyPort: number;
 	    activeCredentialId: string;
+	    telemetryEnabled: boolean;
+	    telemetryId: string;
+	    telemetryLastAt: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -202,6 +205,9 @@ export namespace model {
 	        this.proxyEnabled = source["proxyEnabled"];
 	        this.proxyPort = source["proxyPort"];
 	        this.activeCredentialId = source["activeCredentialId"];
+	        this.telemetryEnabled = source["telemetryEnabled"];
+	        this.telemetryId = source["telemetryId"];
+	        this.telemetryLastAt = source["telemetryLastAt"];
 	    }
 	}
 	
