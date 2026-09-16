@@ -18,10 +18,8 @@ import (
 )
 
 // pingURL 是上报地址。变量便于测试注入 httptest 地址。
-//
-// TODO: 替换为实际的国内上报域名。服务端契约见 docs/DESIGN.md：
-// POST /ping，body 见 payload，收到即返回 200 且无响应体。
-var pingURL = "https://telemetry.workbuddy-checkin.example/ping"
+// 服务端契约见 docs/DESIGN.md：POST /ping，body 见 payload，收到即返回 200 且无响应体。
+var pingURL = "https://workbuddy.frp.hosea123.com/ping"
 
 // 上报间隔：距上次成功上报超过该时长才再次上报。
 const reportInterval = 24 * time.Hour
@@ -67,11 +65,15 @@ func NewService(st *store.Store, appVersion string) *Service {
 // SetNow 注入时钟（测试用）。
 func (s *Service) SetNow(fn func() time.Time) { s.now = fn }
 
-// Start 确保设备标识存在（无条件，与开关无关），随后启动小时级检查循环。
-func (s *Service) Start(parent context.Context) {
+// Start 确保设备标识存在（无条件，与开关无关），启动时先检查一次（仍受 24h
+// 间隔与开关约束），随后启动小时级检查循环。
+func (s *Service) Start(ctx context.Context) {
 	s.ensureID()
 	s.stop = make(chan struct{})
-	go s.loop(parent)
+	go func() {
+		s.checkAndReport(ctx)
+		s.loop(ctx)
+	}()
 }
 
 // Stop 停止检查循环；幂等，未 Start 时调用也安全。
