@@ -6,6 +6,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hosea3000/workbuddy-checkin/model"
@@ -25,6 +26,9 @@ type Notifier interface {
 	Notify(title, body string)
 }
 
+// refreshMarginSeconds 是代理侧续期的触发余量：距过期不足该秒数即视为临期。
+const refreshMarginSeconds = 60
+
 // Service 执行单账号签到、续期与余额刷新。
 type Service struct {
 	store  *store.Store
@@ -32,6 +36,10 @@ type Service struct {
 	notify Notifier
 
 	now func() time.Time
+
+	// ponytail: 单凭证场景下一个全局锁足够（应用只有当前凭证会走代理续期）。
+	// 若将来代理支持多凭证并发，改为 per-credential 锁。
+	refreshMu sync.Mutex
 }
 
 // NewService 构造签到服务。now 为 nil 时使用 time.Now。
@@ -51,18 +59,11 @@ func snapshot(c model.Credential) codebuddy.CredentialSnapshot {
 	}
 }
 
-// refreshIfNeeded 在凭证临期（<24h）且存在 refresh_token 时续期。
-// 返回更新后的凭证（未续期则原样返回；续期失败被拒时置 relogin_required）。
-func (s *Service) refreshIfNeeded(ctx context.Context, c model.Credential) model.Credential {
-	if c.RefreshToken == "" {
-		return c
-	}
-	if c.ExpiresAt == 0 || s.now().Unix() < c.ExpiresAt-24*3600 {
-		return c
-	}
+// refreshTokens 执行令牌交换并回写存储。无副作用：不置状态、不通知、不判定临期。
+func (s *Service) refreshTokens(ctx context.Context, c model.Credential) (model.Credential, error) {
 	td, err := s.client.RefreshToken(ctx, c.AccessToken, c.Domain, c.RefreshToken)
 	if err != nil {
-		return s.handleRefreshError(c, err)
+		return c, err
 	}
 	c.AccessToken = td.AccessToken
 	if td.RefreshToken != "" {
@@ -78,7 +79,54 @@ func (s *Service) refreshIfNeeded(ctx context.Context, c model.Credential) model
 		c.Domain = td.Domain
 	}
 	_ = s.store.SaveCredential(c)
-	return c
+	return c, nil
+}
+
+// refreshIfNeeded 在凭证临期（<24h）且存在 refresh_token 时续期。
+// 返回更新后的凭证（未续期则原样返回；续期失败被拒时置 relogin_required）。
+func (s *Service) refreshIfNeeded(ctx context.Context, c model.Credential) model.Credential {
+	if c.RefreshToken == "" {
+		return c
+	}
+	if c.ExpiresAt == 0 || s.now().Unix() < c.ExpiresAt-24*3600 {
+		return c
+	}
+	updated, err := s.refreshTokens(ctx, c)
+	if err != nil {
+		return s.handleRefreshError(c, err)
+	}
+	return updated
+}
+
+// EnsureFresh 供代理调用的无副作用续期入口：仅在令牌临期（距过期不足 60 秒或已过期）
+// 且存在 refresh_token 时续期。失败直接返回错误，不置 relogin_required、不发通知。
+// 触发窗口比签到路径（24h）窄：令牌仍可用时不应因续期失败而拒绝请求。
+func (s *Service) EnsureFresh(ctx context.Context, id string) (model.Credential, error) {
+	c, ok := s.store.GetCredential(id)
+	if !ok {
+		return model.Credential{}, ErrAccountNotFound
+	}
+	if !s.stale(c) {
+		return c, nil
+	}
+	s.refreshMu.Lock()
+	defer s.refreshMu.Unlock()
+	// 等锁期间可能已被并发请求刷新，重新读取后再判定
+	if cur, ok := s.store.GetCredential(id); ok {
+		c = cur
+	}
+	if !s.stale(c) {
+		return c, nil
+	}
+	return s.refreshTokens(ctx, c)
+}
+
+// stale 判断凭证是否需要续期：有 refresh_token 且有效期已知且已临期。
+func (s *Service) stale(c model.Credential) bool {
+	if c.RefreshToken == "" || c.ExpiresAt == 0 {
+		return false
+	}
+	return s.now().Unix() >= c.ExpiresAt-refreshMarginSeconds
 }
 
 // handleRefreshError 只在 unauthorized（凭证被上游拒绝）时置 relogin_required 并通知一次。

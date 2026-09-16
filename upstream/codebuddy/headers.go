@@ -99,6 +99,26 @@ func GenerateHeaders(cred CredentialSnapshot, ids ConversationIDs, cliVersion st
 	return headers, nil
 }
 
+// GenerateIDEConfigHeaders 为 /v3/config 模型接口生成 CodeBuddyIDE 变体头集。
+func GenerateIDEConfigHeaders(cred CredentialSnapshot, cliVersion string) (map[string]string, error) {
+	headers, err := GenerateHeaders(cred, ConversationIDs{}, cliVersion)
+	if err != nil {
+		return nil, err
+	}
+	if cliVersion == "" {
+		cliVersion = "2.107.0"
+	}
+	host := HostFromEndpoint(defaultEndpoint)
+	headers["Host"] = host
+	headers["X-Domain"] = host
+	headers["Accept"] = "application/json"
+	headers["X-IDE-Type"] = "CodeBuddyIDE"
+	headers["X-IDE-Name"] = "CodeBuddyIDE"
+	headers["X-IDE-Version"] = cliVersion
+	headers["X-Product-Version"] = cliVersion
+	return headers, nil
+}
+
 func orNewUUID(v string) string {
 	if v != "" {
 		return v

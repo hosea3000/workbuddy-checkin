@@ -55,6 +55,7 @@ async function onSuccess() {
         @checkin="accounts.checkinNow"
         @refresh-quota="accounts.refreshQuota"
         @remove="accounts.remove"
+        @set-active="accounts.setActive"
       />
     </div>
     <div v-else class="text-sm text-slate-400 text-center py-16">还没有账号，点击「添加账号」开始。</div>

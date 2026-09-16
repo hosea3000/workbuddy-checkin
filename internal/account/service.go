@@ -182,7 +182,7 @@ func (s *Service) pollAccount(ctx context.Context, sess *session) model.LoginSta
 	sess.stage = "done"
 	sess.accountID = cred.ID
 	s.mu.Unlock()
-	view := ToView(cred, s.now())
+	view := ToView(cred, s.now(), s.store.GetSettings().ActiveCredentialID)
 	log.Printf("[login] check state=%s: ✅ 登录完成，凭证已入库 id=%s user=%s", sess.state, cred.ID, cred.UserID)
 	return model.LoginStatus{Stage: "done", Done: true, Account: &view}
 }
@@ -252,7 +252,22 @@ func (s *Service) assemble(acc *codebuddy.Account, td *codebuddy.TokenData) (mod
 	if err := s.store.SaveCredential(cred); err != nil {
 		return model.Credential{}, err
 	}
+	s.ensureActiveCredential(cred.ID)
 	return cred, nil
+}
+
+// ensureActiveCredential 在当前凭证为空时把新登录账号设为当前凭证（不覆盖用户已做的选择）。
+func (s *Service) ensureActiveCredential(id string) {
+	settings := s.store.GetSettings()
+	if settings.ActiveCredentialID != "" {
+		return
+	}
+	settings.ActiveCredentialID = id
+	if err := s.store.SaveSettings(settings); err != nil {
+		log.Printf("[login] 自动设为当前凭证失败 id=%s: %v", id, err)
+		return
+	}
+	log.Printf("[login] 已自动将 id=%s 设为当前凭证", id)
 }
 
 func (s *Service) findExisting(userID, accountUID string) (model.Credential, bool) {
@@ -293,7 +308,7 @@ func (s *Service) fail(sess *session, msg string) {
 func (s *Service) statusLocked(sess *session) model.LoginStatus {
 	if sess.stage == "done" {
 		if c, ok := s.store.GetCredential(sess.accountID); ok {
-			v := ToView(c, s.now())
+			v := ToView(c, s.now(), s.store.GetSettings().ActiveCredentialID)
 			return model.LoginStatus{Stage: "done", Done: true, Account: &v}
 		}
 	}

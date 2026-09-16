@@ -25,14 +25,25 @@ type Tray struct {
 	onQuit func()
 	onWake func()
 
+	onToggleProxy func()
+
 	started bool
 	tip     string
 }
 
 var trayInstance *Tray
 
-func newTray(onOpen, onQuit, onWake func()) *Tray {
-	return &Tray{onOpen: onOpen, onQuit: onQuit, onWake: onWake}
+func newTray(onOpen, onQuit, onWake, onToggleProxy func()) *Tray {
+	return &Tray{onOpen: onOpen, onQuit: onQuit, onWake: onWake, onToggleProxy: onToggleProxy}
+}
+
+// SetProxyState 更新菜单中「模型代理」项的勾选状态（内部投递到主队列）。
+func (t *Tray) SetProxyState(enabled bool) {
+	state := 0
+	if enabled {
+		state = 1
+	}
+	C.woTraySetProxyState(C.int(state))
 }
 
 // Start 在主线程创建菜单栏图标。tip 仅作初始 tooltip；systemtray 就绪后由 SetTip 更新。
@@ -72,5 +83,12 @@ func woTrayOpen() {
 func woTrayQuit() {
 	if trayInstance != nil && trayInstance.onQuit != nil {
 		trayInstance.onQuit()
+	}
+}
+
+//export woTrayToggleProxy
+func woTrayToggleProxy() {
+	if trayInstance != nil && trayInstance.onToggleProxy != nil {
+		trayInstance.onToggleProxy()
 	}
 }

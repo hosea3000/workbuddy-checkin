@@ -32,6 +32,8 @@ const (
 	appIconResourceID    = 3 // Wails 打包时以 winres.RT_ICON(=3) 写入图标组
 	mfString             = 0x0000
 	mfSeparator          = 0x0800
+	mfChecked            = 0x0008
+	mfByCommand          = 0x0400
 	tpmRightButton       = 0x0002
 	tpmRetToCmd          = 0x0100
 )
@@ -40,6 +42,7 @@ const (
 const (
 	cmdOpen = 1 + iota
 	cmdQuit
+	cmdProxy
 )
 
 var (
@@ -59,6 +62,7 @@ var (
 	procCreatePopupMenu  = user32.NewProc("CreatePopupMenu")
 	procAppendMenu       = user32.NewProc("AppendMenuW")
 	procTrackPopupMenu   = user32.NewProc("TrackPopupMenu")
+	procCheckMenuItem    = user32.NewProc("CheckMenuItem")
 	procGetCursorPos     = user32.NewProc("GetCursorPos")
 	procSetForegroundWnd = user32.NewProc("SetForegroundWindow")
 	procLoadIcon         = user32.NewProc("LoadIconW")
@@ -122,12 +126,15 @@ type Tray struct {
 	onQuit func()
 	onWake func()
 
+	onToggleProxy func()
+
 	menu      syscall.Handle
 	wmTaskbar uint32
 
-	mu    sync.Mutex
-	tip   string
-	added bool
+	mu      sync.Mutex
+	tip     string
+	added   bool
+	proxyOn bool
 }
 
 var (
@@ -138,8 +145,15 @@ var (
 // setActivationPolicyAccessory 仅在 macOS 有意义，Windows 为空操作。
 func setActivationPolicyAccessory() {}
 
-func newTray(onOpen, onQuit, onWake func()) *Tray {
-	return &Tray{onOpen: onOpen, onQuit: onQuit, onWake: onWake}
+func newTray(onOpen, onQuit, onWake, onToggleProxy func()) *Tray {
+	return &Tray{onOpen: onOpen, onQuit: onQuit, onWake: onWake, onToggleProxy: onToggleProxy}
+}
+
+// SetProxyState 更新菜单中「模型代理」项的勾选状态。
+func (t *Tray) SetProxyState(enabled bool) {
+	t.mu.Lock()
+	t.proxyOn = enabled
+	t.mu.Unlock()
 }
 
 // Start 创建消息窗口与托盘图标（须在独立 OS 线程上运行消息循环）。
@@ -195,6 +209,8 @@ func (t *Tray) buildMenu() {
 	}
 	t.menu = syscall.Handle(hMenu)
 	appendMenu(hMenu, mfString, cmdOpen, "打开主界面")
+	appendMenu(hMenu, mfSeparator, 0, "")
+	appendMenu(hMenu, mfString, cmdProxy, "模型代理")
 	appendMenu(hMenu, mfSeparator, 0, "")
 	appendMenu(hMenu, mfString, cmdQuit, "退出")
 }
@@ -255,12 +271,24 @@ func (t *Tray) showMenu() {
 	var pt point
 	procGetCursorPos.Call(uintptr(unsafe.Pointer(&pt)))
 	procSetForegroundWnd.Call(uintptr(t.hwnd))
+	t.mu.Lock()
+	proxyOn := t.proxyOn
+	t.mu.Unlock()
+	flags := uintptr(mfByCommand)
+	if proxyOn {
+		flags |= mfChecked
+	}
+	procCheckMenuItem.Call(uintptr(t.menu), uintptr(cmdProxy), flags)
 	// TPM_RETURNCMD：选中命令通过返回值返回，系统不投递 WM_COMMAND。
 	res, _, _ := procTrackPopupMenu.Call(uintptr(t.menu), tpmRightButton|tpmRetToCmd, uintptr(pt.x), uintptr(pt.y), 0, uintptr(t.hwnd), 0)
 	switch uint32(res) {
 	case cmdOpen:
 		if t.onOpen != nil {
 			t.onOpen()
+		}
+	case cmdProxy:
+		if t.onToggleProxy != nil {
+			t.onToggleProxy()
 		}
 	case cmdQuit:
 		t.remove()

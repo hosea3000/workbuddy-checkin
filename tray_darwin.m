@@ -15,10 +15,12 @@
 // 由 Go 侧 //export 导出的回调。
 extern void woTrayOpen(void);
 extern void woTrayQuit(void);
+extern void woTrayToggleProxy(void);
 
 @interface WOTrayController : NSObject
 @property (strong) NSStatusItem *statusItem;
 @property (strong) NSMenu *menu;
+@property (strong) NSMenuItem *proxyItem;
 @end
 
 @implementation WOTrayController
@@ -35,6 +37,15 @@ extern void woTrayQuit(void);
                                                    keyEquivalent:@""];
         [openItem setTarget:self];
         [_menu addItem:openItem];
+
+        [_menu addItem:[NSMenuItem separatorItem]];
+
+        NSMenuItem *proxyItem = [[NSMenuItem alloc] initWithTitle:@"模型代理"
+                                                           action:@selector(onToggleProxy:)
+                                                    keyEquivalent:@""];
+        [proxyItem setTarget:self];
+        _proxyItem = proxyItem;
+        [_menu addItem:proxyItem];
 
         [_menu addItem:[NSMenuItem separatorItem]];
 
@@ -63,6 +74,10 @@ extern void woTrayQuit(void);
 
 - (void)onQuit:(id)sender {
     woTrayQuit();
+}
+
+- (void)onToggleProxy:(id)sender {
+    woTrayToggleProxy();
 }
 
 - (void)setIcon:(NSData *)data {
@@ -108,6 +123,13 @@ void woTraySetTip(const char *tip) {
         ensureController();
         // NSStatusItem 无原生 tooltip；写入 button.toolTip 以便悬停提示。
         gController.statusItem.button.toolTip = title;
+    });
+}
+
+void woTraySetProxyState(int enabled) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        ensureController();
+        gController.proxyItem.state = enabled ? NSControlStateValueOn : NSControlStateValueOff;
     });
 }
 
