@@ -33,7 +33,7 @@ workbuddy-checkin：桌面小工具（Windows / macOS，Wails v2 + Go + Vue3）�
 - 上游协议从 `/root/code/github/work2api/internal/upstream/codebuddy/` 逐字移植；本仓库与 work2api 不互通，勿复用其模块或依赖。
 - `upstream/codebuddy/headers.go` 的 CLI 伪装头与常量（`cli_version = 2.107.0` 等）冻结，禁改。
 - 系统集成（托盘/自启/通知）必须同时提供 `*_stub.go`（`//go:build !windows && !darwin`），保证 Linux 下 `go test ./...` 可跑。托盘为 Windows（`tray_windows.go`）与 macOS（`tray_darwin.go`）各一份实现，stub 仅覆盖其余平台。
-- macOS 系统集成优先用系统命令（`launchctl`/`osascript`/`hdiutil`/`open`），**不引入任何新的第三方 Go 依赖**；菜单栏图标是唯一例外，用手写 cgo/Objective-C（`tray_darwin.go`/`.m`/`.h`，`NSStatusItem`）——因为 `osascript` 无法创建常驻状态栏项。**不得为此引入 `energye/systray` 等第三方托盘库**（其 macOS 实现会抢占 `NSApplication.delegate`，破坏 Wails 的单实例锁与 ⌘Q 链路）。不签名、不公证。
+- macOS 系统集成优先用系统命令（`launchctl`/`osascript`/`hdiutil`/`open`）；菜单栏图标是唯一例外，用手写 cgo/Objective-C（`tray_darwin.go`/`.m`/`.h`，`NSStatusItem`）——因为 `osascript` 无法创建常驻状态栏项。**不得为此引入 `energye/systray` 等第三方托盘库**（其 macOS 实现会抢占 `NSApplication.delegate`，破坏 Wails 的单实例锁与 ⌘Q 链路，详见 DESIGN.md 决策记录）。不签名、不公证。
 - 存储是 JSON 文件（`os.UserConfigDir()/workbuddy-checkin/`），非 SQLite；原子写 + 损坏自愈（`.corrupt-<时间戳>`）。
 - 令牌明文 0600 存储；**日志 / UI / 通知永不出现 token**，UI 只暴露 `token_suffix`（末 8 位）。
 - 依赖方向单向无环：`main → internal/* → store → model`，`internal/* → upstream/codebuddy`。

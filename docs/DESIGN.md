@@ -12,7 +12,8 @@
 | 存储 | JSON 文件（`os.UserConfigDir()/workbuddy-checkin/`） | 账号数个位级、数据 < 1 MB，SQLite 是过度设计；health-tool 已验证 |
 | 网络 | 标准库 `net/http` | 上游客户端无第三方依赖 |
 | 系统集成（Windows） | `golang.org/x/sys/windows` + `go-toast` | 自启（HKCU Run）、托盘（手写 Win32）、Toast 通知 |
-| 系统集成（macOS） | 系统命令 + 手写 cgo/Objective-C（无新依赖） | 自启走 LaunchAgent + `launchctl`、通知走 `osascript`、更新走 `hdiutil`/`open`；菜单栏图标走 cgo `NSStatusItem`（`osascript` 无法创建常驻状态栏项） |
+| 系统集成（macOS） | 系统命令 + 手写 cgo/Objective-C（该系统集成层不引新依赖） | 自启走 LaunchAgent + `launchctl`、通知走 `osascript`、更新走 `hdiutil`/`open`；菜单栏图标走 cgo `NSStatusItem`（`osascript` 无法创建常驻状态栏项） |
+| 日志 | 标准库 `log` + `natefinch/lumberjack.v2` | 输出至数据目录 `app.log`，5MB 轮转 / 保留 3 份 / 30 天 / gzip；lumberjack 纯 stdlib、无传递依赖，且已处理 Windows 打开中文件 rename 的陷阱 |
 | 无 GUI 平台 | `*_stub.go`（`//go:build !windows && !darwin`） | Linux 上可 `go test ./...` 与 `wails dev` 调试业务逻辑 |
 
 **平台能力矩阵**：

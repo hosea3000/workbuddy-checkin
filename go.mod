@@ -6,6 +6,7 @@ require (
 	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3
 	github.com/wailsapp/wails/v2 v2.13.0
 	golang.org/x/sys v0.48.0
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
 require (
