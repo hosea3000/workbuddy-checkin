@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { FolderOpen, RefreshCw, Download } from '@lucide/vue'
+import { FolderOpen, RefreshCw, Download, ExternalLink } from '@lucide/vue'
+import { BrowserOpenURL } from '../../wailsjs/runtime/runtime'
 import { useSettingsStore } from '../stores/settings'
 import { useUpdateStore } from '../stores/update'
 import { useToast } from '../composables/toast'
 import { api, type Settings } from '../api/bindings'
+
+const REPO_URL = 'https://github.com/hosea3000/workbuddy-checkin'
 
 const store = useSettingsStore()
 const update = useUpdateStore()
@@ -69,6 +72,10 @@ async function openDataDir() {
     toast.push(String(e), 'error')
   }
 }
+
+function openRepo() {
+  BrowserOpenURL(REPO_URL)
+}
 </script>
 
 <template>
@@ -90,8 +97,8 @@ async function openDataDir() {
         <div>
           <div class="text-sm font-medium">软件更新</div>
           <div class="text-xs text-slate-500 mt-0.5">
-            当前版本 v{{ update.version || 'dev' }}
-            <span v-if="update.result && update.result.status !== 'update-available'"> · {{ update.result.message }}</span>
+            <span v-if="update.result && update.result.status !== 'update-available'">{{ update.result.message }}</span>
+            <span v-else>检查并下载新版本</span>
           </div>
         </div>
         <div class="flex items-center gap-2">
@@ -155,6 +162,27 @@ async function openDataDir() {
       <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm cursor-pointer" @click="openDataDir">
         <FolderOpen class="w-4 h-4" /> 打开数据目录
       </button>
+    </div>
+
+    <div class="bg-white dark:bg-slate-900 rounded-xl ring-1 ring-slate-200 dark:ring-slate-800 px-4 py-3 mt-4 divide-y divide-slate-100 dark:divide-slate-800">
+      <div class="pb-3">
+        <div class="text-sm font-medium mb-2">关于</div>
+        <button
+          class="inline-flex items-center gap-1.5 text-sm text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+          title="在浏览器中打开"
+          @click="openRepo"
+        >
+          <ExternalLink class="w-4 h-4" /> {{ REPO_URL.replace('https://', '') }}
+        </button>
+      </div>
+      <div class="flex items-center justify-between gap-4 pt-3">
+        <div class="text-sm">许可证</div>
+        <div class="text-sm text-slate-500">MIT</div>
+      </div>
+      <div class="flex items-center justify-between gap-4 pt-3">
+        <div class="text-sm">当前版本</div>
+        <div class="text-sm text-slate-500">v{{ update.version || 'dev' }}</div>
+      </div>
     </div>
   </section>
 </template>
