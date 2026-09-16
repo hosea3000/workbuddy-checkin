@@ -52,22 +52,6 @@
 - **WHEN** 用户在 macOS 菜单栏菜单选择「打开」
 - **THEN** 主窗口显示并获得焦点
 
-### Requirement: macOS 菜单栏图标与激活策略
-
-macOS SHALL 在菜单栏常驻一个模板（Template）图标以适配深浅色外观，SHALL NOT 显示 Dock 图标；应用 SHALL 以 `Accessory` 激活策略运行。图标在应用整个生命周期内 SHALL 保持可见，直至用户退出。
-
-#### Scenario: 无 Dock 图标
-- **WHEN** macOS 应用启动后观察 Dock
-- **THEN** Dock 中不出现应用图标，仅菜单栏出现图标
-
-#### Scenario: 深浅色适配
-- **WHEN** 用户切换系统为深色外观
-- **THEN** 菜单栏图标自动适配，保持清晰可见
-
-#### Scenario: 主窗口隐藏后图标仍在
-- **WHEN** 用户关闭主窗口
-- **THEN** 菜单栏图标仍可见且菜单可用
-
 ### Requirement: 非 Windows 平台可测试
 
 系统 SHALL 为托盘、自启、通知等系统集成提供平台构建分支，保证 Linux 下 `go test ./...` 可运行：无对应实现的平台 SHALL 提供 stub（`//go:build` 排除已实现平台）。托盘 SHALL 为 Windows 与 macOS 分别提供实现，stub SHALL 仅用于其余平台。
@@ -83,3 +67,21 @@ macOS SHALL 在菜单栏常驻一个模板（Template）图标以适配深浅色
 #### Scenario: Windows 编译
 - **WHEN** 为 windows 构建
 - **THEN** 编译 Windows 托盘实现而非 stub
+
+## ADDED Requirements
+
+### Requirement: macOS 菜单栏图标与激活策略
+
+macOS SHALL 在菜单栏常驻一个模板（Template）图标以适配深浅色外观，SHALL NOT 显示 Dock 图标；应用 SHALL 以 `Accessory` 激活策略运行。图标在应用整个生命周期内 SHALL 保持可见，直至用户退出。
+
+#### Scenario: 无 Dock 图标
+- **WHEN** macOS 应用启动后观察 Dock
+- **THEN** Dock 中不出现应用图标，仅菜单栏出现图标
+
+#### Scenario: 深浅色适配
+- **WHEN** 用户切换系统为深色外观
+- **THEN** 菜单栏图标自动适配，保持清晰可见
+
+#### Scenario: 主窗口隐藏后图标仍在
+- **WHEN** 用户关闭主窗口
+- **THEN** 菜单栏图标仍可见且菜单可用

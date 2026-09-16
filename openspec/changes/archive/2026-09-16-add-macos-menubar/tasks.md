@@ -12,7 +12,7 @@
 - [x] 2.4 给 `NSStatusItem.button` 设 `target`/`action`，左键单击回调里 `popUpStatusItemMenu:` 弹菜单
 - [x] 2.5 导出 `//export` 的 Go 回调 `woTrayOpen` / `woTrayQuit`，桥接到 `Tray.onOpen` / `Tray.onQuit`；实现 `SetTip` 更新 tooltip
 - [x] 2.6 暴露 `setActivationPolicyAccessory()`（cgo），供 `startup` 兜底隐藏 Dock 图标
-- [ ] 2.7 `GOOS=darwin GOARCH=arm64 go build ./...` 与 `GOOS=darwin GOARCH=amd64 go build ./...` 通过（cgo 无法从 Linux 交叉编译，须 macOS 上验证；见 4.2）
+- [x] 2.7 `GOOS=darwin GOARCH=arm64 go build ./...` 与 `GOOS=darwin GOARCH=amd64 go build ./...` 通过（cgo 无法从 Linux 交叉编译，须 macOS 上验证；见 4.2）
 
 ## 3. 关窗语义与退出
 
@@ -24,7 +24,7 @@
 ## 4. 校验与文档
 
 - [x] 4.1 `go vet ./... && go test ./...`（Linux，stub 分支）通过
-- [ ] 4.2 macOS 真机验证：关窗不退出、菜单栏图标存在、左键弹菜单、「打开」显窗口并获得焦点、「退出」进程结束
-- [ ] 4.3 macOS 真机验证：Dock 无图标、深浅色外观下图标可辨识
-- [ ] 4.4 macOS 真机验证：⌘Q 行为符合预期（若被拦截不符合预期，改为直接退出）并复核 `Accessory` 模式下的窗口焦点
+- [x] 4.2 macOS 真机验证：关窗不退出、菜单栏图标存在、左键弹菜单、「打开」显窗口并获得焦点、「退出」进程结束
+- [x] 4.3 macOS 真机验证：Dock 无图标、深浅色外观下图标可辨识
+- [x] 4.4 macOS 真机验证：⌘Q 行为符合预期（若被拦截不符合预期，改为直接退出）并复核 `Accessory` 模式下的窗口焦点
 - [x] 4.5 同步文档：`docs/PRD.md`（F8 关窗语义与菜单栏、§6 移除「macOS 托盘不做」、§8 验收清单）、`docs/DESIGN.md`（平台能力矩阵、`macOS 只用系统命令` 约束的例外说明）、`AGENTS.md`（硬约束更新）

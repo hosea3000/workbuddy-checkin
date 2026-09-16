@@ -1,3 +1,8 @@
+## RENAMED Requirements
+
+- FROM: `### Requirement: 首次提示最小化到托盘`
+- TO: `### Requirement: 首次提示隐藏到后台`
+
 ## MODIFIED Requirements
 
 ### Requirement: 首次提示隐藏到后台
